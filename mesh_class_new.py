@@ -533,7 +533,7 @@ class WakeLine:
         positionVector = self.getVertexPositionVector(index)
         return positionVector.x, positionVector.y, positionVector.z
         
-    def add_vertex(self, x, y, z):
+    def addVertex(self, x, y, z):
         
         positionVector = (Vector(x, y, z) - self.ro).changeBasis(self.A)
         
@@ -541,6 +541,19 @@ class WakeLine:
             (
                 self.vertex, 
                 [positionVector.x, positionVector.y, positionVector.z]
+            )
+        )
+        
+        self.numOfVertices = self.numOfVertices + 1
+
+    def addTrailingVertex(self, x, y, z):
+    
+        positionVector = (Vector(x, y, z) - self.ro).changeBasis(self.A)
+        
+        self.vertex = np.vstack(
+            ( 
+                [positionVector.x, positionVector.y, positionVector.z],
+                self.vertex
             )
         )
         
@@ -815,6 +828,131 @@ class Wake:
     def dispaly(self, elevation=30, azimuth=-60):
         ax, fig = self.plot(elevation, azimuth)
         plt.show()
+
+
+class FreeWake(Wake):
+
+    def __init__(
+        self, rigidBody:RigidBody, length, numOfWakeFaces, faceType="Quads"
+    ) -> None:       
+        
+        self.wakeLine = np.array(
+            [
+                WakeLine(
+                    ro=rigiBody.r_o + Vector(*rigidBody.surface.vertex[id]).changeBasis(rigiBody.A.T),
+                    length=length, numOfVertices = numOfWakeFaces + 1
+                )
+                for id in rigidBody.trailingEdge
+            ]
+        )
+        
+        self.numOfWakeLines = len(self.wakeLine)
+        self.numOfWakeRows = self.numOfWakeLines - 1
+        
+        self.wakeRow = np.array(
+            [
+                WakeRow([self.wakeLine[i], self.wakeLine[i+1]], faceType)
+                for i in range(self.numOfWakeRows)
+            ]
+        )
+        
+    def plot(self, elevation=30, azimuth=-60):
+        
+        fig = plt.figure()
+        ax = fig.add_subplot(projection="3d")
+        
+        # unit vectors of inertial frame of reference f'
+        e_x = Vector(1, 0, 0)
+        e_y = Vector(0, 1, 0)
+        e_z = Vector(0, 0, 1)
+        
+        # plot wake surface in inertial frame of reference f'
+        ax.add_collection(
+            Poly3DCollection(
+                self.getFacesVertices(),
+                facecolors = "steelblue",
+                edgecolors = "black",
+                alpha=0.5
+            )
+        )
+        
+        # plot inertial frame of reference F
+        e_x = ax.quiver(
+            0, 0, 0, e_x.x, e_x.y, e_x.z,
+            color='b', label="$e_x$"
+        )
+        
+        e_y = ax.quiver(
+            0, 0, 0, e_y.x, e_y.y, e_y.z,
+            color='g', label="$e_y$"
+        )
+        
+        e_z = ax.quiver(
+            0, 0, 0, e_z.x, e_z.y, e_z.z,
+            color='r', label="$e_z$"
+        )
+        
+        
+        ax.view_init(elevation, azimuth)
+        ax.set_xlabel("$x$")
+        ax.set_ylabel("$y$")
+        ax.set_zlabel("$z$")
+        
+        
+        ax.set_xlim3d(
+            min(
+                [
+                    0,
+                    self.wakeLine[0].getVertex(0)[0],
+                    self.wakeLine[-1].getVertex(0)[0]
+                ]
+            ),
+            max(
+                [
+                    0,
+                    self.wakeLine[0].getVertex(-1)[0],
+                    self.wakeLine[-1].getVertex(-1)[0]
+                ]
+            )
+        )
+        
+        ax.set_ylim3d(
+            min(
+                [
+                    0,
+                    self.wakeLine[0].getVertex(0)[1],
+                    self.wakeLine[-1].getVertex(0)[1]
+                ]
+            ),
+            max(
+                [
+                    0,
+                    self.wakeLine[0].getVertex(-1)[1],
+                    self.wakeLine[-1].getVertex(-1)[1]
+                ]
+            )
+        )
+        
+        ax.set_zlim3d(
+            -1+min(
+                [
+                    0,
+                    self.wakeLine[0].getVertex(0)[2],
+                    self.wakeLine[-1].getVertex(0)[2]
+                ]
+            ),
+            1+max(
+                [
+                    0,
+                    self.wakeLine[0].getVertex(-1)[2],
+                    self.wakeLine[-1].getVertex(-1)[2]
+                ]
+            )
+        )
+        
+        set_axes_equal(ax)
+        
+        return ax, fig
 
        
     
