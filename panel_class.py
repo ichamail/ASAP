@@ -1,7 +1,7 @@
 import numpy as np
 from vector_class import Vector
 from typing import Any
-from plot_functions import set_axes_equal, make_legend_arrow
+from plot_functions import set_axes_equal
 from matplotlib import pyplot as plt
 from matplotlib.legend_handler import HandlerPatch
 import matplotlib.patches as mpatches
