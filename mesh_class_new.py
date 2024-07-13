@@ -170,15 +170,22 @@ class RigidBody:
         # body-fixed frame's angular velocity vector
         self.omega = Vector(0, 0, 0)
         
-        self.trailingEdge = None
-        self.sheddingFaces = None
-        
         pass
     
     @property
     def surface(self):
         return self._surfaceMesh
     
+    def getVertex(self, vertex_id, bodyFixedFrame=True):
+        if bodyFixedFrame:
+            return self.surface.vertex[vertex_id]
+        else:
+            r = (
+                self.ro 
+                + Vector(*self.getVertex(vertex_id)).changeBasis(self.A.T)
+            )
+            return r.x, r.y, r.z
+            
     def getFaceVertices(self, face_id, bodyFixedFrame=True):
         
         if bodyFixedFrame:
@@ -186,17 +193,13 @@ class RigidBody:
             return self.surface.getFaceVertices(face_id)
         
         else:
-            
-            vertex = self.surface.getFaceVertices(face_id)
                         
-            for i in range(len(vertex)):
-                r = (
-                    self.ro
-                    + Vector(*vertex[i]).changeBasis(self.A.T)
-                )
-                vertex[i] = r.x, r.y, r.z
-            
-            return vertex
+            return np.array(
+                [
+                    self.getVertex(vertex_id, bodyFixedFrame)
+                    for vertex_id in self.surface.getFace(face_id)
+                ]
+            )
     
     def getFacesVertices(self, bodyFixedFrame=True):
         
@@ -205,6 +208,12 @@ class RigidBody:
             return self.surface.getFacesVertices()
             
         else:
+            
+            # # straight forward way but slower
+            # return [
+            #     self.getFaceVertices(face_id, bodyFixedFrame)
+            #     for face_id in range(self.surface.numOfFaces)
+            # ]
             
             vertex = np.zeros_like(self.surface.vertex)
             for id in range(self.surface.numOfVertices):
@@ -306,35 +315,6 @@ class RigidBody:
         
         self.A = Az @ Ay @ Ax @ self.A
 
-    def set_trailingEdge(self, trailingEdgeVerticesIDs:list[int]):
-        self.trailingEdge = np.array(trailingEdgeVerticesIDs)
-       
-    def locateSheddingFaces(self):
-        
-        self.sheddingFaces = np.zeros(
-            shape=( len(self.trailingEdge) - 1, 2 ), dtype=int
-        )
-
-        for i in range(self.sheddingFaces.shape[0]):
-            j = 0 
-            for face_id in range(self.surface.numOfFaces):
-                if sum(
-                    [
-                        vertex_id in [self.trailingEdge[i], self.trailingEdge[i+1]] 
-                        for vertex_id in self.surface.getFace(face_id)
-                    ]
-                ) == 2:
-                    
-                    self.sheddingFaces[i][j] = face_id
-                    j = j + 1
-    
-    def setSheddingFace(
-        self, upperSheddingFaces_idList, lowerSheddingFaces_idList
-        ):
-        self.sheddingFaces = np.column_stack(
-            (upperSheddingFaces_idList, lowerSheddingFaces_idList)
-        )
-    
     def plot_withRespectToBodyFixedFrame(self, elevation=30, azimuth=-60):
         
         # unit vectors of inertial frame of reference F  expressed in the body-fixed frame of reference f'
@@ -559,6 +539,7 @@ class WakeLine:
         
         self.numOfVertices = self.numOfVertices + 1
 
+
 class WakeRow:
     
     def __init__(self, wakeLines:list[WakeLine], faceType:str="Quads") -> None:
@@ -606,7 +587,8 @@ class WakeRow:
         else:
             
             print("index out of bounds")
-        
+
+
 class WakePanelRow(WakeRow):
     def __init__(self, wakeLines: list[WakeLine], faceType: str = "Quads") -> None:
         super().__init__(wakeLines, faceType)
@@ -632,21 +614,22 @@ class WakePanelRow(WakeRow):
                     for i in range(self.numOfFaces)
                 ]
             )
+
                     
 class Wake:
     
     def __init__(
-        self, rigidBody:RigidBody, length, numOfWakeFaces, faceType="Quads"
+        self, trailingEdgeVertex, length, numOfWakeFaces, faceType="Quads"
     ) -> None:
         
         
         self.wakeLine = np.array(
             [
                 WakeLine(
-                    ro=Vector(*rigidBody.surface.vertex[id]),
+                    ro=Vector(*trailingEdgeVertex[i]),
                     length=length, numOfVertices = numOfWakeFaces + 1
                 )
-                for id in rigidBody.trailingEdge
+                for i in range(len(trailingEdgeVertex))
             ]
         )
         
@@ -825,137 +808,177 @@ class Wake:
         
         return ax, fig
     
-    def dispaly(self, elevation=30, azimuth=-60):
+    def display(self, elevation=30, azimuth=-60):
         ax, fig = self.plot(elevation, azimuth)
         plt.show()
 
 
-class FreeWake(Wake):
+class RigidAerodynamicBody(RigidBody):
+    
+    def __init__(self, surfaceMesh: Mesh, name: str = "rigid body") -> None:
+        super().__init__(surfaceMesh, name)
+        self.trailingEdge = None
+        self.sheddingFaces = None
+        self.wake = None
+        self.isWakeFree = False
+    
+    def set_trailingEdge(self, trailingEdgeVerticesIDs:list[int]):
+        self.trailingEdge = np.array(trailingEdgeVerticesIDs)
+       
+    def locateSheddingFaces(self):
+        
+        self.sheddingFaces = np.zeros(
+            shape=( len(self.trailingEdge) - 1, 2 ), dtype=int
+        )
 
-    def __init__(
-        self, rigidBody:RigidBody, length, numOfWakeFaces, faceType="Quads"
-    ) -> None:       
+        for i in range(self.sheddingFaces.shape[0]):
+            j = 0 
+            for face_id in range(self.surface.numOfFaces):
+                if sum(
+                    [
+                        vertex_id in [self.trailingEdge[i], self.trailingEdge[i+1]] 
+                        for vertex_id in self.surface.getFace(face_id)
+                    ]
+                ) == 2:
+                    
+                    self.sheddingFaces[i][j] = face_id
+                    j = j + 1
+    
+    def setSheddingFace(
+        self, upperSheddingFaces_idList, lowerSheddingFaces_idList
+        ):
+        self.sheddingFaces = np.column_stack(
+            (upperSheddingFaces_idList, lowerSheddingFaces_idList)
+        )
+    
+    def setWake(
+        self, length:float, numOfWakeFaces:int,
+        faceType:str="Quads", isWakeFree:bool=False):
         
-        self.wakeLine = np.array(
-            [
-                WakeLine(
-                    ro=rigiBody.r_o + Vector(*rigidBody.surface.vertex[id]).changeBasis(rigiBody.A.T),
-                    length=length, numOfVertices = numOfWakeFaces + 1
+        if isWakeFree:
+            self.isWakeFree = True
+            bodyFixedFrame = False
+        else:
+            self.isWakeFree = False
+            bodyFixedFrame = True
+            
+        self.wake = Wake(
+            trailingEdgeVertex=np.array(
+                [
+                    self.getVertex(vertex_id, bodyFixedFrame)
+                    for vertex_id in self.trailingEdge
+                ] 
+            ),
+            length = length,
+            numOfWakeFaces = numOfWakeFaces,
+            faceType = faceType               
+        )
+                   
+        pass
+    
+    def getWakeVertex(self, wakeLineIndex, vertexIndex, bodyFixedFrame=True):
+        
+        if (bodyFixedFrame and not self.isWakeFree) or (not bodyFixedFrame and self.isWakeFree):
+            
+            return self.wake.wakeLine[wakeLineIndex].getVertex(vertexIndex)
+        
+        elif not bodyFixedFrame and not self.isWakeFree:
+            
+            r = (
+                self.ro 
+                + self.wake.wakeLine[wakeLineIndex].getVertexPositionVector(
+                    vertexIndex).changeBasis(self.A.T)
+            )
+            return r.x, r.y, r.z
+        
+        elif bodyFixedFrame and self.isWakeFree:
+            r = (
+                self.wake.wakeLine[wakeLineIndex].getVertexPositionVector(
+                    vertexIndex
                 )
-                for id in rigidBody.trailingEdge
-            ]
-        )
+                - self.ro
+            ).changeBasis(self.A)
+            
+            return r.x, r.y, r.z
+    
+    def getWakeFaceVertices(self, wakeRowIndex, faceIndex, bodyFixedFrame=True):
         
-        self.numOfWakeLines = len(self.wakeLine)
-        self.numOfWakeRows = self.numOfWakeLines - 1
-        
-        self.wakeRow = np.array(
+        return np.array(
             [
-                WakeRow([self.wakeLine[i], self.wakeLine[i+1]], faceType)
-                for i in range(self.numOfWakeRows)
+                self.getWakeVertex(wakeLineIndex, vertexIndex, bodyFixedFrame)
+                for wakeLineIndex, vertexIndex in self.wake.getFace(
+                    wakeRowIndex, faceIndex
+                )
             ]
         )
+    
+    def getWakeFacesVertices(self, bodyFixedFrame=True):
         
-    def plot(self, elevation=30, azimuth=-60):
+        # # straight forward way but slower
+        # return [
+        #     self.getWakeFaceVertices(wakeRowIndex=j, faceIndex=i, bodyFixedFrame=bodyFixedFrame)
+        #     for j in range(self.wake.numOfWakeRows)
+        #     for i in range(self.wake.numOfWakeFaces)
+        # ]
         
-        fig = plt.figure()
-        ax = fig.add_subplot(projection="3d")
-        
-        # unit vectors of inertial frame of reference f'
-        e_x = Vector(1, 0, 0)
-        e_y = Vector(0, 1, 0)
-        e_z = Vector(0, 0, 1)
-        
-        # plot wake surface in inertial frame of reference f'
-        ax.add_collection(
-            Poly3DCollection(
-                self.getFacesVertices(),
-                facecolors = "steelblue",
-                edgecolors = "black",
-                alpha=0.5
-            )
+        vertex = np.zeros(
+            shape=(self.wake.numOfWakeLines, self.wake.numOfWakeVertices),
+            dtype=tuple
         )
-        
-        # plot inertial frame of reference F
-        e_x = ax.quiver(
-            0, 0, 0, e_x.x, e_x.y, e_x.z,
-            color='b', label="$e_x$"
-        )
-        
-        e_y = ax.quiver(
-            0, 0, 0, e_y.x, e_y.y, e_y.z,
-            color='g', label="$e_y$"
-        )
-        
-        e_z = ax.quiver(
-            0, 0, 0, e_z.x, e_z.y, e_z.z,
-            color='r', label="$e_z$"
-        )
-        
-        
-        ax.view_init(elevation, azimuth)
-        ax.set_xlabel("$x$")
-        ax.set_ylabel("$y$")
-        ax.set_zlabel("$z$")
-        
-        
-        ax.set_xlim3d(
-            min(
+
+        for wakeLineIndex in range(self.wake.numOfWakeLines):
+            for vertexIndex in range(self.wake.numOfWakeVertices):
+                vertex[wakeLineIndex][vertexIndex] = self.getWakeVertex(
+                    wakeLineIndex, vertexIndex, bodyFixedFrame
+                )
+              
+        return [
+            np.array(
                 [
-                    0,
-                    self.wakeLine[0].getVertex(0)[0],
-                    self.wakeLine[-1].getVertex(0)[0]
-                ]
-            ),
-            max(
-                [
-                    0,
-                    self.wakeLine[0].getVertex(-1)[0],
-                    self.wakeLine[-1].getVertex(-1)[0]
+                    vertex[wakeLineIndex][vertexIndex]
+                    for wakeLineIndex, vertexIndex in self.wake.getFace(
+                        wakeRowIndex, faceIndex
+                    )
                 ]
             )
-        )
+            for wakeRowIndex in range(self.wake.numOfWakeRows)
+            for faceIndex in range(self.wake.numOfWakeFaces)
+        ]
+             
+    def plot(
+        self, elevation=30, azimuth=-60, bodyFixedFrame=False, plotWake=False
+    ):
         
-        ax.set_ylim3d(
-            min(
-                [
-                    0,
-                    self.wakeLine[0].getVertex(0)[1],
-                    self.wakeLine[-1].getVertex(0)[1]
-                ]
-            ),
-            max(
-                [
-                    0,
-                    self.wakeLine[0].getVertex(-1)[1],
-                    self.wakeLine[-1].getVertex(-1)[1]
-                ]
+        if plotWake:
+            
+            ax, fig =  super().plot(elevation, azimuth, bodyFixedFrame)
+            
+            # plot wake surface in body-fixed frame of reference f'
+            ax.add_collection(
+                Poly3DCollection(
+                    self.getWakeFacesVertices(bodyFixedFrame),
+                    facecolors = "steelblue",
+                    edgecolors = "black",
+                    alpha=0.5
+                )
             )
+            
+            return ax, fig
+        
+        else:
+            
+            return super().plot(elevation, azimuth, bodyFixedFrame)
+    
+    def display(
+        self, elevation=30, azimuth=-60, bodyFixedFrame=False, displayWake=True
+    ):
+        ax, fig = self.plot(
+            elevation, azimuth, bodyFixedFrame, plotWake=displayWake
         )
-        
-        ax.set_zlim3d(
-            -1+min(
-                [
-                    0,
-                    self.wakeLine[0].getVertex(0)[2],
-                    self.wakeLine[-1].getVertex(0)[2]
-                ]
-            ),
-            1+max(
-                [
-                    0,
-                    self.wakeLine[0].getVertex(-1)[2],
-                    self.wakeLine[-1].getVertex(-1)[2]
-                ]
-            )
-        )
-        
-        set_axes_equal(ax)
-        
-        return ax, fig
+        plt.show()
+
 
        
-    
 if __name__=="__main__":
     from airfoil_class import Airfoil
     from wing_class import Wing
@@ -974,25 +997,14 @@ if __name__=="__main__":
         mesh_WingTips=True,
     )
     
-    wingMesh = Mesh(node, face)
+    wingMesh = Mesh(node, face)    
+    flyingObject = RigidAerodynamicBody(surfaceMesh=wingMesh)
     
-    wingMesh.dispaly(elevation=30, azimuth=-60)
-    
-    rigidBody = RigidBody(surfaceMesh=wingMesh)
-    rigidBody.set_BodyFixedFrame_origin(2, 1, 1)
-    
-    rigidBody.display(bodyFixedFrame=False)
-    
-    rigidBody.set_trailingEdge(
-        trailingEdgeVerticesIDs=[id for id in range(5)]
-    )
-    
-    wake = Wake(
-        rigidBody=rigidBody, length=10, numOfWakeFaces=5, faceType="Quads"
-    )
-    
-    
-    
-    wake.dispaly()
+    flyingObject.set_BodyFixedFrame_origin(1, 1, 1)
 
+    
+    flyingObject.set_trailingEdge([0, 1, 2, 3, 4])
+    flyingObject.setWake(2, 2, isWakeFree=True)
+    flyingObject.display(bodyFixedFrame=True, displayWake=True)
+    
     pass
