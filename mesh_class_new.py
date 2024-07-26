@@ -473,6 +473,7 @@ class WakeLine:
         
                 
         self.ro = ro
+        self.Vo = Vector(0, 0, 0)
         self.A = np.identity(3, dtype=float)
                 
         self.vertex = np.column_stack(
@@ -539,6 +540,15 @@ class WakeLine:
         
         self.numOfVertices = self.numOfVertices + 1
 
+    def moveWakeFixedFrame(self, dt):
+        self.ro = self.ro + dt*self.Vo
+        
+    def moveVertex(self, vertexIndex:int, dr:Vector):
+        dr = dr.changeBasis(self.A)
+        self.vertex[vertexIndex][0] = self.vertex[vertexIndex][0] + dr.x
+        self.vertex[vertexIndex][1] = self.vertex[vertexIndex][1] + dr.y
+        self.vertex[vertexIndex][2] = self.vertex[vertexIndex][2] + dr.z
+    
 
 class WakeRow:
     
@@ -643,6 +653,8 @@ class Wake:
             ]
         )
         
+        V_inf = Vector(0, 0 , 0)
+        
     @property
     def numOfWakeVertices(self):
         # number of wake vertices per wake line
@@ -656,7 +668,16 @@ class Wake:
     @property
     def faceType(self):
         return self.wakeRow[0].faceType
-      
+    
+    @property
+    def Vinf(self):
+        return self.wakeLine[0].Vo
+    
+    @Vinf.setter
+    def Vinf(self, Vinf):
+        for i in range(self.numOfWakeLines):
+            self.wakeLine[i].Vo = Vector(Vinf.x, Vinf.y, Vinf.z)
+     
     def getFace(self, wakeRowIndex:int, faceIndex:int):
         
         if self.faceType == "Quads":
@@ -812,6 +833,14 @@ class Wake:
         ax, fig = self.plot(elevation, azimuth)
         plt.show()
 
+    def shed(self, trailingEdgeVertex):
+        for i in range(self.numOfWakeLines):
+            self.wakeLine[i].addTrailingVertex(*trailingEdgeVertex[i])     
+
+    def moveWakeFixedFrames(self, dt):
+        for i in range(self.numOfWakeLines):
+            self.wakeLine[i].moveWakeFixedFrame(dt)
+    
 
 class RigidAerodynamicBody(RigidBody):
     
@@ -863,7 +892,7 @@ class RigidAerodynamicBody(RigidBody):
             bodyFixedFrame = True
             
         self.wake = Wake(
-            trailingEdgeVertex=np.array(
+            trailingEdgeVertex = np.array(
                 [
                     self.getVertex(vertex_id, bodyFixedFrame)
                     for vertex_id in self.trailingEdge
@@ -963,6 +992,33 @@ class RigidAerodynamicBody(RigidBody):
                 )
             )
             
+            verts = np.array(
+                [
+                    self.getWakeVertex(
+                        wakeLineIndex, self.wake.numOfWakeVertices-1, bodyFixedFrame
+                    )
+                    for wakeLineIndex in range(self.wake.numOfWakeLines)
+                ]
+            )
+            
+            x_limits = ax.get_xlim3d()
+            y_limits = ax.get_ylim3d()           
+            z_limits = ax.get_zlim3d()
+            
+            ax.set_xlim3d(
+                min([x_limits[0], *verts[:, 0]]),
+                max([x_limits[1], *verts[:, 0]])
+            )
+            ax.set_ylim3d(
+                min([y_limits[0], *verts[:, 1]]),
+                max([y_limits[1], *verts[:, 1]])
+            )
+            ax.set_zlim3d(
+                min([z_limits[0], *verts[:, 2]]),
+                max([z_limits[1], *verts[:, 2]])
+            )
+            set_axes_equal(ax)
+            
             return ax, fig
         
         else:
@@ -977,7 +1033,66 @@ class RigidAerodynamicBody(RigidBody):
         )
         plt.show()
 
-
+    def move_BodyFixedFrame(self, dt):
+        super().move_BodyFixedFrame(dt)
+        self.ravelWake(dt)
+        
+    def ravelWake(self, dt):
+        if self.isWakeFree:
+            self.ravelFreeWake(dt)
+        else:
+            self.ravelSurfaceFixedWake(dt)
+    
+    def ravelFreeWake(self, dt):
+        
+        self.wake.moveWakeFixedFrames(dt)
+            
+        self.wake.shed(
+            trailingEdgeVertex=np.array(
+                [
+                    self.getVertex(vertex_id=id, bodyFixedFrame=False)
+                    for id in self.trailingEdge
+                ]
+            )
+        )
+    
+    def ravelSurfaceFixedWake(self, dt):
+        
+        for wakeLineIndex in range(self.wake.numOfWakeLines):
+            for vertexIndex in range(self.wake.numOfWakeVertices):
+                                
+                # r = Vector(
+                #     *self.getWakeVertex(
+                #         wakeLineIndex, vertexIndex, bodyFixedFrame=False
+                #     )
+                # )
+                # V =  self.wake.Vinf - (
+                #     self.Vo + self.omega.cross(r - self.ro) 
+                # )
+                
+                # faster - less vector operations
+                r = Vector(
+                    *self.getWakeVertex(
+                        wakeLineIndex, vertexIndex, bodyFixedFrame=True
+                    )
+                )
+                V =  self.wake.Vinf - (
+                    self.Vo + self.omega.cross(r.changeBasis(self.A.T)) 
+                )
+                                              
+                dr = dt * V.changeBasis(self.A)
+                                                    
+                self.wake.wakeLine[wakeLineIndex].moveVertex(vertexIndex,dr)
+        
+        self.wake.shed(
+            trailingEdgeVertex=np.array(
+                [
+                    self.getVertex(vertex_id=id, bodyFixedFrame=True)
+                    for id in self.trailingEdge
+                ]
+            )
+        )
+        
        
 if __name__=="__main__":
     from airfoil_class import Airfoil
@@ -1005,6 +1120,19 @@ if __name__=="__main__":
     
     flyingObject.set_trailingEdge([0, 1, 2, 3, 4])
     flyingObject.setWake(2, 2, isWakeFree=True)
-    flyingObject.display(bodyFixedFrame=True, displayWake=True)
+    flyingObject.display(bodyFixedFrame=False, displayWake=True)
+    
+    flyingObject.set_BodyFixedFrame_origin_velocity(
+        Vo_x=-0.5, Vo_y=0, Vo_z=0
+    )
+    
+    flyingObject.set_BodyFixedFrame_angular_velocity(20, 0, 0)
+    
+    # flyingObject.wake.Vinf = Vector(0.5, 0, 0)
+    
+    for i in range(90):
+        flyingObject.move_BodyFixedFrame(dt=0.05)
+    
+    flyingObject.display(bodyFixedFrame=False, displayWake=True)
     
     pass
