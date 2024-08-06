@@ -5,7 +5,7 @@ from matplotlib.colors import LightSource as LightSource
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from plot_functions import set_axes_equal
 from mesh_class import Mesh, PanelMesh
-from wake_class import Wake
+from wake_class import Wake, PanelWake
 
 
 """
@@ -23,7 +23,7 @@ A =  e_x * e_y', e_y * e_y', e_z * e_y'
 
 class RigidBody:
     
-    def __init__(self, surfaceMesh:Mesh, name:str="rigid body") -> None:
+    def __init__(self, surfaceMesh:Mesh|PanelMesh, name:str="rigid body") -> None:
         
         self.name = name
         self._surfaceMesh = surfaceMesh
@@ -242,6 +242,7 @@ class RigidBody:
         )
         
         set_axes_equal(ax)
+        ax.legend()
         
         return ax, fig
         
@@ -320,6 +321,7 @@ class RigidBody:
         ax.set_zlim3d(min([0, *vertex[:, 2]]), max([0, *vertex[:, 2]]))
                     
         set_axes_equal(ax)
+        ax.legend()
         
         return ax, fig
     
@@ -330,13 +332,13 @@ class RigidBody:
             return self.plot_withRespectToInertialFrame(elevation, azimuth)
     
     def display(self, elevation=30, azimuth=-60, bodyFixedFrame=False):
-        self.plot(elevation, azimuth, bodyFixedFrame)
+        ax, fig = self.plot(elevation, azimuth, bodyFixedFrame)
         plt.show()
 
 
 class RigidAerodynamicBody(RigidBody):
     
-    def __init__(self, surfaceMesh: Mesh, name: str = "rigid body") -> None:
+    def __init__(self, surfaceMesh:Mesh|PanelMesh, name: str = "rigid body") -> None:
         super().__init__(surfaceMesh, name)
         self.trailingEdge = None
         self.sheddingFaces = None
@@ -375,13 +377,16 @@ class RigidAerodynamicBody(RigidBody):
     def setWake(
         self, length:float, numOfWakeFaces:int,
         faceType:str="Quads", isWakeFree:bool=False):
-        
+                
         if isWakeFree:
             self.isWakeFree = True
             bodyFixedFrame = False
         else:
             self.isWakeFree = False
             bodyFixedFrame = True
+            
+        if isinstance(self.surface, PanelMesh):
+            Wake = PanelWake
             
         self.wake = Wake(
             trailingEdgeVertex = np.array(
@@ -392,11 +397,11 @@ class RigidAerodynamicBody(RigidBody):
             ),
             length = length,
             numOfWakeFaces = numOfWakeFaces,
-            faceType = faceType               
+            faceType = faceType       
         )
                    
         pass
-    
+        
     def getWakeVertex(self, wakeLineIndex, vertexIndex, bodyFixedFrame=True):
         
         if (bodyFixedFrame and not self.isWakeFree) or (not bodyFixedFrame and self.isWakeFree):
@@ -547,7 +552,7 @@ class RigidAerodynamicBody(RigidBody):
                 ]
             )
         )
-    
+        
     def ravelSurfaceFixedWake(self, dt):
         
         for wakeLineIndex in range(self.wake.numOfWakeLines):
@@ -576,6 +581,9 @@ class RigidAerodynamicBody(RigidBody):
                                                     
                 self.wake.wakeLine[wakeLineIndex].moveVertex(vertexIndex,dr)
         
+        for i in range(self.wake.numOfWakeRows):
+            self.wake.wakeRow[i].updatePanelsPosition()  # free wake doesn't need update
+        
         self.wake.shed(
             trailingEdgeVertex=np.array(
                 [
@@ -584,13 +592,17 @@ class RigidAerodynamicBody(RigidBody):
                 ]
             )
         )
+        
+        pass
+        
+        
 
 
 if __name__=="__main__":
     from airfoil_class import Airfoil
     from wing_class import Wing
     
-    node, face = Wing(
+    vertex, face = Wing(
         root_airfoil=Airfoil(name="naca0012 sharp", chordLength=0.5),
         tip_airfoil=Airfoil(name="naca0012 sharp", chordLength=0.5),
         halfSpan=0.5
@@ -604,7 +616,11 @@ if __name__=="__main__":
         mesh_WingTips=True,
     )
     
-    wingMesh = Mesh(node, face)    
+    # wingMesh = Mesh(vertex, face)
+    wingMesh = PanelMesh(vertex, face)
+    
+    
+    
     flyingObject = RigidAerodynamicBody(surfaceMesh=wingMesh)
     
     flyingObject.set_BodyFixedFrame_origin(1, 1, 1)
