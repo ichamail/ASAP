@@ -222,11 +222,7 @@ class Panel:
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
 
-        ax.legend(
-            handler_map={
-                mpatches.FancyArrow: HandlerPatch(patch_func=make_legend_arrow)
-            }
-        )
+        ax.legend()
             
         return ax, fig
     
@@ -319,7 +315,7 @@ class TriPanel(Panel):
         super().__init__(vertices, CCW)
         
     def set_e_n_and_area(self):
-        print(True)
+        
         normal = (self.r[0] - self.r[1]).cross(self.r[0] - self.r[2])
         self.area = normal.norm()/2
         self.e_n = normal/normal.norm()
