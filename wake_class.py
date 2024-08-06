@@ -121,7 +121,11 @@ class WakeRow:
         
         if self.faceType=="Quads":
             
-            return self.getQuadFace(index)      
+            return self.getQuadFace(index)
+        
+        elif self.faceType=="Trias":
+            print("Not implementedye")
+            return -1   
         
     def getQuadFace(self, index:int):
         
@@ -153,9 +157,15 @@ class WakeRow:
 
 
 class WakePanelRow(WakeRow):
+    
     def __init__(self, wakeLines: list[WakeLine], faceType: str = "Quads") -> None:
         super().__init__(wakeLines, faceType)
         
+        self.setPanels()
+        
+        pass
+    
+    def setPanels(self):
         if self.faceType == "Quads":
             self.panel = np.array(
                 [
@@ -170,14 +180,35 @@ class WakePanelRow(WakeRow):
                     for i in range(self.numOfFaces)
                 ]
             )
-        else:
-            self.panel = np.array(
-                [
-                    WakeTriPanel(vertices=self.getFace(i), CCW=True)
-                    for i in range(self.numOfFaces)
-                ]
+        
+        pass
+    
+    def addTrailingPanel(self):
+        
+        if self.faceType == "Quads":
+            
+            self.panel = np.hstack(
+                (
+                   WakeQuadPanel(vertices=self.getFace(0), CCW=True),
+                   self.panel
+                )
             )
-
+            
+        elif self.faceType == "Trias":
+            
+            self.panel = np.hstack(
+                (
+                    [
+                        WakeTriPanel(vertices=self.getFace(0), CCW=True),
+                        WakeTriPanel(vertices=self.getFace(1), CCW=True)
+                    ],
+                    self.panel
+                )
+            )
+    
+    def updatePanelsPosition(self):
+        for i in range(self.numOfFaces):
+            self.panel[i].set_vertices(vertices=self.getFace(i), CCW=True)
                     
 class Wake:
     
@@ -185,28 +216,17 @@ class Wake:
         self, trailingEdgeVertex, length, numOfWakeFaces, faceType="Quads"
     ) -> None:
         
-        
-        self.wakeLine = np.array(
-            [
-                WakeLine(
-                    ro=Vector(*trailingEdgeVertex[i]),
-                    length=length, numOfVertices = numOfWakeFaces + 1
-                )
-                for i in range(len(trailingEdgeVertex))
-            ]
-        )
+        self.setWakeLines(trailingEdgeVertex, length, numOfWakeFaces)
         
         self.numOfWakeLines = len(self.wakeLine)
+        
         self.numOfWakeRows = self.numOfWakeLines - 1
         
-        self.wakeRow = np.array(
-            [
-                WakeRow([self.wakeLine[i], self.wakeLine[i+1]], faceType)
-                for i in range(self.numOfWakeRows)
-            ]
-        )
+        self.setWakeRows(faceType)
         
         V_inf = Vector(0, 0 , 0)
+        
+        pass
         
     @property
     def numOfWakeVertices(self):
@@ -230,7 +250,28 @@ class Wake:
     def Vinf(self, Vinf):
         for i in range(self.numOfWakeLines):
             self.wakeLine[i].Vo = Vector(Vinf.x, Vinf.y, Vinf.z)
-     
+    
+    def setWakeLines(self, trailingEdgeVertex, length, numOfWakeFaces):
+        
+        self.wakeLine = np.array(
+            [
+                WakeLine(
+                    ro=Vector(*trailingEdgeVertex[i]),
+                    length=length, numOfVertices = numOfWakeFaces + 1
+                )
+                for i in range(len(trailingEdgeVertex))
+            ]
+        )
+    
+    def setWakeRows(self, faceType):
+                    
+        self.wakeRow = np.array(
+            [
+                WakeRow([self.wakeLine[i], self.wakeLine[i+1]], faceType)
+                for i in range(self.numOfWakeRows)
+            ]
+        )
+         
     def getFace(self, wakeRowIndex:int, faceIndex:int):
         
         if self.faceType == "Quads":
@@ -395,6 +436,29 @@ class Wake:
             self.wakeLine[i].moveWakeFixedFrame(dt)
 
 
+class PanelWake(Wake):
+    
+    def setWakeRows(self, faceType):
+        
+        self.wakeRow = np.array(
+            [
+                WakePanelRow([self.wakeLine[i], self.wakeLine[i+1]], faceType)
+                for i in range(self.numOfWakeRows)
+            ]
+        )
+        
+        pass
+    
+    def shed(self, trailingEdgeVertex):
+        
+        super().shed(trailingEdgeVertex)
+        
+        for i in range(self.numOfWakeRows):
+                
+            self.wakeRow[i].addTrailingPanel()
+            
+        pass
+    
 if __name__=="__main__":
     
     wake = Wake(
