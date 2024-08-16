@@ -132,7 +132,7 @@ class Mesh:
         
         return ax, fig
     
-    def dispaly(self, elevation=30, azimuth=-60):
+    def display(self, elevation=30, azimuth=-60):
         ax, fig = self.plot(elevation, azimuth)
         plt.show()
 
@@ -176,6 +176,6 @@ if __name__=="__main__":
     
     wingMesh = Mesh(node, face)
     
-    wingMesh.dispaly(elevation=30, azimuth=-60)
+    wingMesh.display(elevation=30, azimuth=-60)
     
     pass
