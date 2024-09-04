@@ -33,7 +33,7 @@ class Mesh:
         self.numOfVertices = len(self.vertex)
         self.numOfFaces = len(self.face)
         
-        self.adjacency_matrix:np.ndarray[np.dtype:int]
+        self.adjacencyMatrix:np.ndarray[np.dtype:int]
         self.setAdjacencyMatrix()
         
         pass
@@ -70,7 +70,7 @@ class Mesh:
 
     def setAdjacencyMatrix(self) -> None:
         
-        self.adjacency_matrix = np.zeros((self.numOfFaces, self.numOfFaces))
+        self.adjacencyMatrix = np.zeros((self.numOfFaces, self.numOfFaces))
         
         for face_i_id in range(self.numOfFaces):
             for face_j_id in range(self.numOfFaces):
@@ -80,7 +80,7 @@ class Mesh:
                         self.getFace(face_i_id), self.getFace(face_j_id)
                     )
                 ):
-                    self.adjacency_matrix[face_i_id][face_j_id] = 1
+                    self.adjacencyMatrix[face_i_id][face_j_id] = 1
                                                 
         # # should be faster but when meassured it isn't               
         # for face_i_id in range(self.numOfFaces):
@@ -96,7 +96,13 @@ class Mesh:
         #                 self.adjacency_matrix[face_j_id][face_i_id] = 1
         
         pass
-
+    
+    def getFacesAdjacentFaces(self, faceIndex):
+        return [
+            index for index in range(self.numOfFaces)
+            if self.adjacencyMatrix[faceIndex][index] == 1
+        ]
+    
     def __copy__(self):
         obj = type(self).__new__(self.__class__)
         obj.__dict__.update(self.__dict__)
@@ -142,19 +148,23 @@ class PanelMesh(Mesh):
     def __init__(self, vertex: np.ndarray, face: np.ndarray) -> None:
         super().__init__(vertex, face)
         
-        self.panel = np.array(
+        self.panel:np.ndarray[SurfaceTriPanel|SurfaceQuadPanel] = np.array(
             [
                 SurfaceTriPanel(
-                    vertices=self.getFaceVertices(face_id=id), CCW=True
+                    vertices=self.getFaceVertices(face_id=id), CCW=True, id=id
                 )
                 if len(self.getFace(face_id=id)) == 3 else
                 SurfaceQuadPanel(
-                    vertices=self.getFaceVertices(face_id=id), CCW=True
+                    vertices=self.getFaceVertices(face_id=id), CCW=True, id=id
                 )
                 for id in range(self.numOfFaces)
             ]
         )
 
+    def getPanelsAdjacentPanels(self, panelIndex):
+        return [
+            self.panel[id] for id in self.getFacesAdjacentFaces(panelIndex)
+        ]
 
 if __name__=="__main__":
     from airfoil_class import Airfoil

@@ -224,7 +224,7 @@ class Wake:
         
         self.setWakeRows(faceType)
         
-        V_inf = Vector(0, 0 , 0)
+        self.V_inf = Vector(0, 0 , 0)
         
         pass
         

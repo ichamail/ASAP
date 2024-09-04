@@ -6,14 +6,16 @@ from matplotlib import pyplot as plt
 from matplotlib.legend_handler import HandlerPatch
 import matplotlib.patches as mpatches
 from is_inside_polygon import is_inside_polygon
+from Algorithms import LeastSquares
+
         
 class Panel:
     
     collocationPoint_offset:float = 10**(-15)
     
-    def __init__(self, vertices:np.ndarray, CCW:bool=True):
+    def __init__(self, vertices:np.ndarray, CCW:bool=True, id:int=-1):
         
-        self.id:int = -1  # panel's identity
+        self.id:int = id  # panel's identity
         
         self.CCW:bool
         self.numOfVertices:int
@@ -263,14 +265,14 @@ class Panel:
    
 class QuadPanel(Panel):
     
-    def __init__(self, vertices:np.ndarray, CCW:bool=True):
+    def __init__(self, vertices:np.ndarray, CCW:bool=True, id:int=-1):
         
         # VSAero atributes
         self.SMP:float
         self.SMQ:float
         self.T:Vector
         
-        super().__init__(vertices, CCW)
+        super().__init__(vertices, CCW, id)
        
     def set_e_n_and_area(self):
         
@@ -306,13 +308,14 @@ class QuadPanel(Panel):
         self.set_A()
         self.set_char_length()
         self.set_T()
+        self.set_collocationPoint()
 
         
 class TriPanel(Panel):
     
-    def __init__(self, vertices:np.ndarray, CCW:bool=True):
+    def __init__(self, vertices:np.ndarray, CCW:bool=True, id:int=-1):
         
-        super().__init__(vertices, CCW)
+        super().__init__(vertices, CCW, id)
         
     def set_e_n_and_area(self):
         
@@ -327,8 +330,8 @@ class Source(Panel):
     
     farFieldFactor:float = 10
     
-    def __init__(self, vertices: np.ndarray, CCW: bool = True):
-        super().__init__(vertices, CCW)
+    def __init__(self, vertices: np.ndarray, CCW: bool = True, id:int=-1):
+        super().__init__(vertices, CCW, id)
         
         self.sigma:float = 0
     
@@ -644,8 +647,8 @@ class Doublet(Panel):
     
     farFieldFactor:float = 10
     
-    def __init__(self, vertices: np.ndarray, CCW: bool = True):
-        super().__init__(vertices, CCW)
+    def __init__(self, vertices: np.ndarray, CCW: bool = True, id:int=-1):
+        super().__init__(vertices, CCW, id)
         
         self.mu:float = 0
         
@@ -899,7 +902,85 @@ class SurfacePanel(Source, Doublet):
             + Doublet.inducedVelocity(self, r_p)
         )
 
-    def get_surfaceVelocity(self, adjacentPanels):
+    def setSurfaceVelocity(self, adjacentPanels, Vfs):
+        
+        """
+        V = Vx*ex + Vy*ey + Vz*ez or u*i + V*j  + w*k (body-fixed frame of ref)
+        
+        V = Vl*l + Vm*m + Vn*n (panel's local frame of reference)
+        
+        sigma = (e_n * nabla)(φ - φ_i) = (e_n * nabla)(φ - φ_infty) =>
+        sigma = e_n * (V - V_infty) = e_n * (v + V_infty - V_infty) =>
+        sigma = e_n * v = vn
+        
+        μ = φ - φ_i = φ - φ_infty => nabla μ = nabla (φ - φ_infty) = V - V_infty
+        nabla μ = v + V_infty - V_infty => nabla μ = v
+        
+        (r_ij * nabla)μ = μ_j - μ_i
+        
+        (r_ij * nabla)μ = Δl_ij*dμ/dl + Δm_ij*dμ/dm + Δn_ij*dμ/dn 
+                        =~ Δl_ij*dμ/dl + Δm_ij*dμ/dm
+        
+                
+        (r_ij * nabla)μ = Δl_ij(vl) + Δm_ij(vm) = μ_j - μ_i
+        
+        [[Δl_i1 , Δm_i1]                [[μ_1 - μ_i]
+        [Δl_i2 , Δm_i2]      [[vl]       [μ_2 - μ_i]
+        [Δl_i3 , Δm_i3]  =    [vm]]  =   [μ_3 - μ_i]
+            ....                            ....
+        [Δl_iN , Δm_iN]]                 [μ_4 - μ_i]]
+        
+        least squares method ---> vl, vm
+        """
+        
+        n = len(adjacentPanels)
+        A = np.zeros((n, 2))
+        b = np.zeros((n, 1))
+        
+        for j in range(n):
+            panel_j = adjacentPanels[j]
+            # Rodrigues' rotation formula
+            phi = np.arccos(self.e_n.dot(panel_j.e_n))
+            isConvex = False
+            if self.e_n.dot(panel_j.r_centroid - self.r_centroid) <= 0:
+                isConvex = True
+            
+            index = []
+            for ii in range(self.numOfVertices):
+                for jj in range(panel_j.numOfVertices):
+                    if self.r[ii] == panel_j.r[jj]:
+                        index.append(ii)
+                        break
+            
+            if index[1]-index[0]==1:
+                k = self.r[index[1]] - self.r[index[0]]
+            else:
+                k = self.r[index[0]] - self.r[index[1]]
+                
+            if not self.CCW:
+                k = - k
+            
+            if isConvex:
+                k = -k/k.norm()
+            else:
+                k = k/k.norm()
+                
+            v = panel_j.r_centroid - self.r[index[0]]
+            # Rodrigues' rotation formula
+            v_rot = v * np.cos(phi) + k.cross(v)*np.sin(phi) + k * (k.dot(v)) * (1 - np.cos(phi))
+            
+            r_centroid_rot = v_rot + self.r[index[0]]
+            r_ij = (r_centroid_rot - self.r_centroid).changeBasis(self.A)
+            A[j][0], A[j][1], = r_ij.x, r_ij.y
+            b[j][0] = panel_j.mu - self.mu
+            
+        # nabla_mu = LeastSquares(A, b)
+        nabla_mu, _, _, _ = np.linalg.lstsq(A, b)
+        
+        vl, vm, vn = nabla_mu[0][0], nabla_mu[1][0], self.sigma
+        
+        self.V = Vector(vl, vm, vn).changeBasis(self.A.T) + Vfs
+        
         pass
 
 
@@ -913,15 +994,226 @@ class SurfaceTriPanel(TriPanel, SurfacePanel):
 
 class SurfaceQuadPanel(QuadPanel, SurfacePanel):
     
-    def get_surfaceVelocity(self, adjacentPanels):
+    def setSurfaceVelocity(self, adjacentPanels, Vfs):
         """
         QuadPanels are a special case of Panels than can be used for
         structured surface meshes.
         
         get_surfaceVelocity() use surface numerical differentiation with 
         central, forward and rearward 2nd order finite difference schemes suitable for structured surface meshes.
+        
+        This function computes the surface velocity, following the notation of NASA Contractor Report 4023 "Program VSAERO theory Document,
+        A Computer Program for Calculating Nonlinear Aerodynamic Characteristics
+        of Arbitrary Configurations, Brian Maskew"
+        
+        check pages 48-50 and 23-25
+        
+        Also
+        sigma = (e_n * nabla)(φ - φ_i) = (e_n * nabla)(φ - φ_infty) =>
+        sigma = e_n * (V - V_infty) = e_n * (v + V_infty - V_infty) =>
+        sigma = e_n * v = vn
+        
+        μ = φ - φ_i = φ - φ_infty => nabla μ = nabla (φ - φ_infty) = V - V_infty
+        nabla μ = v + V_infty - V_infty => nabla μ = v
         """
-    
+                    
+        for j in range(len(adjacentPanels)):
+            
+            r_kj = adjacentPanels[j].r_centroid - self.r_centroid
+        
+            if abs(self.T.dot(r_kj)) > abs(self.e_m.dot(r_kj)):
+                
+                if self.T.dot(r_kj) > 0:
+                    
+                    if r_kj.norm() <= self.SMP + adjacentPanels[j].SMP:
+                        N2 = adjacentPanels[j]
+                    else:
+                        N4 = adjacentPanels[j]
+                        
+                else:
+                    
+                    if r_kj.norm() <= self.SMP + adjacentPanels[j].SMP:
+                        N4 = adjacentPanels[j]
+                    else:
+                        N2 = adjacentPanels[j]   
+                                
+            else:
+                
+                if self.e_m.dot(r_kj) > 0:
+                    
+                    if r_kj.norm() <= self.SMQ + adjacentPanels[j].SMQ:
+                        N3 = adjacentPanels[j]
+                    else:
+                        N1 = adjacentPanels[j]
+                        
+                else:
+                    
+                    if r_kj.norm() <= self.SMQ + adjacentPanels[j].SMQ:
+                        N1 = adjacentPanels[j]
+                    else:
+                        N3 = adjacentPanels[j]
+                
+                pass
+        
+        second_order_central_finite_difference_scheme = False
+        second_order_forward_finite_difference_scheme = False
+        second_order_backward_finite_difference_scheme = False
+        
+        if (
+            (N1.r_centroid - self.r_centroid).dot(N3.r_centroid - self.r_centroid) < 0
+        ):
+           second_order_central_finite_difference_scheme = True  
+        else:
+            if self.e_m.dot(N3.r_centroid - self.r_centroid):
+                second_order_forward_finite_difference_scheme = True
+            else:
+                second_order_backward_finite_difference_scheme = True
+         
+        DELQ = 0
+        if second_order_central_finite_difference_scheme:
+            
+            SMQ_k, SMQ_n1, SMQ_n3 = self.SMQ, N1.SMQ, N3.SMQ
+            SA = - (SMQ_k + SMQ_n1)
+            SB = SMQ_k + SMQ_n3
+            DA = (N1.mu - self.mu)/SA
+            DB = (N3.mu - self.mu)/SB
+            DELQ = (DA * SB - DB * SA)/(SB - SA)
+            
+            # panel_j_minus1 = N1
+            # panel_j_plus1 = N3
+            
+            # x1 = 0
+            # x0 = x1 - self.SMQ - panel_j_minus1.SMQ
+            # x2 = x1 + self.SMQ + panel_j_plus1.SMQ
+            # mu0 = panel_j_minus1.mu
+            # mu1 = self.mu
+            # mu2 = panel_j_plus1.mu
+            
+            # DELQ = mu0 * (x1 - x2)/(x0 - x1)/(x0 - x2) \
+            #         + mu1 * (2*x1 - x0 - x2)/(x1 - x0)/(x1 - x2) \
+            #         + mu2 * (x1 - x0)/(x2 - x0)/(x2 - x1)
+            
+        elif second_order_forward_finite_difference_scheme:
+            
+            panel_j_plus1 = N3
+            panel_j_plus2 = N1
+            
+            x0 = 0
+            x1 = x0 + self.SMQ + panel_j_plus1.SMQ
+            x2 = x1 + panel_j_plus1.SMQ + panel_j_plus2.SMQ
+            
+            mu0 = self.mu
+            mu1 = panel_j_plus1.mu
+            mu2 = panel_j_plus2.mu
+            
+            DELQ = mu0 * (2*x0 - x1 - x2)/(x0 - x1)/(x0 - x2) \
+                    + mu1 * (x0 - x2)/(x1 - x0)/(x1 - x2) \
+                    + mu2 * (x0 - x1)/(x2 - x0)/(x2 - x1)
+        
+        elif second_order_backward_finite_difference_scheme:
+            
+            panel_j_minus1 = N1
+            panel_j_minus2 = N3
+            
+            x2 = 0
+            x1 = x2 - self.SMQ - panel_j_minus1.SMQ
+            x0 = x1  - panel_j_minus1.SMQ - panel_j_minus2.SMQ
+            
+            mu0 = panel_j_minus2.mu
+            mu1 = panel_j_minus1.mu
+            mu2 = self.mu
+            
+            DELQ = mu0 * (x2 - x1)/(x0 - x1)/(x0 - x2) \
+                    + mu1 * (x2 - x0)/(x1 - x0)/(x1 - x2) \
+                    + mu2 * (2*x2 - x0 - x1)/(x2 - x0)/(x2 - x1)
+        
+        
+        second_order_central_finite_difference_scheme = False
+        second_order_forward_finite_difference_scheme = False
+        second_order_backward_finite_difference_scheme = False    
+        
+        if (
+            (N4.r_centroid - self.r_centroid).dot(N2.r_centroid - self.r_centroid) < 0
+        ):
+           second_order_central_finite_difference_scheme = True
+        else:
+            if self.e_l.dot(N2.r_centroid - self.r_centroid) > 0:
+                second_order_forward_finite_difference_scheme = True
+            else:
+                second_order_backward_finite_difference_scheme = True
+        
+                
+        DELP = 0
+        if second_order_central_finite_difference_scheme:
+            
+            SMP_k, SMP_n2, SMP_n4 = self.SMP, N2.SMP, N4.SMP
+            SA = - (SMP_k + SMP_n4)
+            SB = SMP_k + SMP_n2
+            DA = (N4.mu - self.mu)/SA
+            DB = (N2.mu - self.mu)/SB
+            DELP = (DA * SB - DB * SA)/(SB - SA)
+            
+            # panel_i_minus1 = N4
+            # panel_i_plus1 = N2
+            
+            # x1 = 0
+            # x0 = x1 - self.SMP - panel_i_minus1.SMP
+            # x2 = x1 + self.SMP + panel_i_plus1.SMP
+            
+            # mu0 = panel_i_minus1.mu
+            # mu1 = self.mu
+            # mu2 = panel_i_plus1.mu
+            
+            # DELP = mu0 * (x1 - x2)/(x0 - x1)/(x0 - x2) \
+            #         + mu1 * (2*x1 - x0 - x2)/(x1 - x0)/(x1 - x2) \
+            #         + mu2 * (x1 - x0)/(x2 - x0)/(x2 - x1)
+                
+        elif second_order_forward_finite_difference_scheme:
+            
+            panel_i_plus1 = N2
+            panel_i_plus2 = N4
+            
+            x0 = 0
+            x1 = x0 + self.SMP + panel_i_plus1.SMP
+            x2 = x1 + panel_i_plus1.SMP + panel_i_plus2.SMP
+            
+            mu0 = self.mu
+            mu1 = panel_i_plus1.mu
+            mu2 = panel_i_plus2.mu
+            
+            DELP = mu0 * (2*x0 - x1 - x2)/(x0 - x1)/(x0 - x2) \
+                    + mu1 * (x0 - x2)/(x1 - x0)/(x1 - x2) \
+                    + mu2 * (x0 - x1)/(x2 - x0)/(x2 - x1)
+            
+        elif second_order_backward_finite_difference_scheme:
+            
+            panel_i_minus1 = N4
+            panel_i_minus2 = N2
+            
+            x2 = 0
+            x1 = x2 - self.SMP - panel_i_minus1.SMP
+            x0 = x1 - panel_i_minus1.SMP - panel_i_minus2.SMP
+            
+            mu0 = panel_i_minus2.mu
+            mu1 = panel_i_minus1.mu
+            mu2 = self.mu
+            
+            DELP = mu0 * (x2 - x1)/(x0 - x1)/(x0 - x2) \
+                    + mu1 * (x2 - x0)/(x1 - x0)/(x1 - x2) \
+                    + mu2 * (2*x2 - x0 - x1)/(x2 - x0)/(x2 - x1)
+
+        
+        T = self.T
+        T = T.changeBasis(self.A)
+        TM = T.y
+        TL = T.x
+        
+        VL = (self.SMP * DELP - TM * DELQ)/TL 
+        VM = DELQ
+        VN = self.sigma
+                
+        self.V = Vector(VL, VM, VN).changeBasis(self.A.T) + Vfs
+        
     pass
 
 
@@ -1244,9 +1536,36 @@ if __name__=='__main__':
     
     # testQuadPanel()
     
-    testSourcePanel()
+    # testSourcePanel()
     
-    testDoubletPanel()
+    # testDoubletPanel()
     
     # testSurfacePanel(r_p=Vector(2, 2, 2))
     
+    from mesh_class import PanelMesh
+    
+    root2 = np.sqrt(2)
+    mesh = PanelMesh(
+        vertex=np.array(
+            [
+                [0, 2, 0],
+                [0, 0, 0],
+                [2, 0, 0],
+                [2, 2, 0],
+                [2+root2, 2, -root2],
+                [2+root2, 0, -root2]
+            ]
+        ),
+        face=np.array(
+            [
+                [0, 1, 2, 3],
+                [5, 4, 3, 2]
+            ]
+        )
+    )
+    mesh.display()
+    
+    mesh.panel[0].get_surfaceVelocity([mesh.panel[1]])
+    
+    
+
