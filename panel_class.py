@@ -388,7 +388,7 @@ class Source(Panel):
                         )
                         - np.arctan(
                             (
-                                r_ab.y/r_ab.x * (r_bp.x**2 - r_p.z**2)
+                                r_ab.y/r_ab.x * (r_bp.x**2 + r_p.z**2)
                                 - r_bp.x * r_bp.y
                             )
                             /
@@ -397,7 +397,7 @@ class Source(Panel):
                             )
                         )
                     )
-                                        
+                                     
             if self.CCW: phi = - phi # Hess and Smith integrals are calculated with clock wise ordering
 
         return  - 1/(4 * np.pi) * phi
@@ -494,7 +494,7 @@ class Source(Panel):
                         )
                         - np.arctan(
                             (
-                                r_ab.y/r_ab.x * (r_bp.x**2 - r_p.z**2)
+                                r_ab.y/r_ab.x * (r_bp.x**2 + r_p.z**2)
                                 - r_bp.x * r_bp.y
                             )
                             /
@@ -564,7 +564,7 @@ class Source(Panel):
                         )
                         - np.arctan(
                             (
-                                r_ab.y/r_ab.x * (r_bp.x**2 - r_p.z**2)
+                                r_ab.y/r_ab.x * (r_bp.x**2 + r_p.z**2)
                                 - r_bp.x * r_bp.y
                             )
                             /
@@ -628,7 +628,7 @@ class Source(Panel):
                             r_p.z * d_ap
                         )
                         - arctan(
-                            r_ab.y/r_ab.x * (r_bp.x**2 - r_p.z**2)
+                            r_ab.y/r_ab.x * (r_bp.x**2 + r_p.z**2)
                             - r_bp.x * r_bp.y
                             ,
                             r_p.z * d_bp
@@ -707,7 +707,7 @@ class Doublet(Panel):
                         )
                         - np.arctan(
                             (
-                                r_ab.y/r_ab.x * (r_bp.x**2 - r_p.z**2)
+                                r_ab.y/r_ab.x * (r_bp.x**2 + r_p.z**2)
                                 - r_bp.x * r_bp.y
                             )
                             /
@@ -769,7 +769,7 @@ class Doublet(Panel):
                         )
                         - np.arctan(
                             (
-                                r_ab.y/r_ab.x * (r_bp.x**2 - r_p.z**2)
+                                r_ab.y/r_ab.x * (r_bp.x**2 + r_p.z**2)
                                 - r_bp.x * r_bp.y
                             )
                             /
@@ -820,7 +820,7 @@ class Doublet(Panel):
                             r_p.z * d_ap
                         )
                         - arctan(
-                            r_ab.y/r_ab.x * (r_bp.x**2 - r_p.z**2)
+                            r_ab.y/r_ab.x * (r_bp.x**2 + r_p.z**2)
                             - r_bp.x * r_bp.y
                             ,
                             r_p.z * d_bp
@@ -1536,36 +1536,9 @@ if __name__=='__main__':
     
     # testQuadPanel()
     
-    # testSourcePanel()
+    testSourcePanel()
     
     # testDoubletPanel()
     
     # testSurfacePanel(r_p=Vector(2, 2, 2))
-    
-    from mesh_class import PanelMesh
-    
-    root2 = np.sqrt(2)
-    mesh = PanelMesh(
-        vertex=np.array(
-            [
-                [0, 2, 0],
-                [0, 0, 0],
-                [2, 0, 0],
-                [2, 2, 0],
-                [2+root2, 2, -root2],
-                [2+root2, 0, -root2]
-            ]
-        ),
-        face=np.array(
-            [
-                [0, 1, 2, 3],
-                [5, 4, 3, 2]
-            ]
-        )
-    )
-    mesh.display()
-    
-    mesh.panel[0].get_surfaceVelocity([mesh.panel[1]])
-    
-    
-
+    pass
