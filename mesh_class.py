@@ -3,7 +3,8 @@ from matplotlib import pyplot as plt
 from matplotlib.colors import LightSource as LightSource
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from plot_functions import set_axes_equal
-from panel_class import SurfaceQuadPanel, SurfaceTriPanel, WakeQuadPanel, WakeTriPanel
+from panel_class import SurfaceQuadPanel, SurfaceTriPanel
+import stl
 
 
 """
@@ -142,6 +143,45 @@ class Mesh:
         ax, fig = self.plot(elevation, azimuth)
         plt.show()
 
+    @classmethod
+    def generateFromSTLfile(cls, fileName:str, filePath="STL_models/"):
+        
+        fileName = filePath + fileName + ".stl"
+        
+        solid_stl_file = open(fileName, "r")
+        solid_stl_obj = stl.read_ascii_file(solid_stl_file)
+
+        vertex_list = []
+        face_list = []
+
+        for facet in solid_stl_obj.facets:
+            for vertex in facet.vertices:
+                is_vertex_in_vertex_list = False
+                for vertex_else in vertex_list:
+                    dx = abs(vertex[0] - vertex_else[0])
+                    dy = abs(vertex[1] - vertex_else[1])
+                    dz = abs(vertex[2] - vertex_else[2])
+                    if dx < 10**(-6) and dy < 10**(-6) and dz < 10**(-6):
+                        is_vertex_in_vertex_list = True
+                        break
+                if not is_vertex_in_vertex_list:
+                    vertex_list.append([vertex[0], vertex[1], vertex[2]])
+     
+        for facet in solid_stl_obj.facets:
+            face = []
+            for vertex in facet.vertices:                
+                for vetrex_id, vertex_else in enumerate(vertex_list):
+                    dx = abs(vertex[0] - vertex_else[0])
+                    dy = abs(vertex[1] - vertex_else[1])
+                    dz = abs(vertex[2] - vertex_else[2])
+                    if dx < 10**(-6) and dy < 10**(-6) and dz < 10**(-6):
+                        break
+                    
+                face.append(vetrex_id)
+                
+            face_list.append(face)
+        
+        return cls(np.array(vertex_list), np.array(face_list))
 
 class PanelMesh(Mesh):
     
