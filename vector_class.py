@@ -82,12 +82,10 @@ class Vector:
         return Vector(-self.x, -self.y, -self.z)
     
     def __eq__(self, vector) -> bool:
-        if (
+        
+        return (
             self.x == vector.x and self.y == vector.y and self.z == vector.z
-        ):
-            return True
-        else:
-            return False
+        )
     
     def __ne__(self, vector) -> bool:
         return not self == vector

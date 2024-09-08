@@ -11,7 +11,7 @@ from Algorithms import LeastSquares
         
 class Panel:
     
-    collocationPoint_offset:float = 10**(-15)
+    collocationPoint_offset:float = 10**(-8)
     
     def __init__(self, vertices:np.ndarray, CCW:bool=True, id:int=-1):
         
@@ -720,7 +720,7 @@ class Doublet(Panel):
             if self.CCW: phi = - phi # Hess and Smith integrals are calculated with clock wise ordering
             
         
-        return - 1/(4*np.pi) * phi
+        return  1/(4*np.pi) * phi
     
     def unitStrength_inducedVelocityPotential(self, r_p:Vector) -> float:
         # faster but produces phi = 0 on panel vertices and edges
@@ -782,7 +782,7 @@ class Doublet(Panel):
             if self.CCW: phi = - phi # Hess and Smith integrals are calculated with clock wise ordering
             
         
-        return - 1/(4*np.pi) * phi
+        return  1/(4*np.pi) * phi
     
     def unitStrength_inducedVelocityPotential(self, r_p:Vector) -> float:
                 
@@ -830,7 +830,7 @@ class Doublet(Panel):
             if self.CCW: phi = - phi # Hess and Smith integrals are calculated with clock wise ordering
             
         
-        return - 1/(4*np.pi) * phi
+        return  1/(4*np.pi) * phi
     
     def inducedVelocityPotential(self, r_p:Vector) -> float:
         return self.mu * self.unitStrength_inducedVelocityPotential(r_p)
@@ -878,7 +878,7 @@ class Doublet(Panel):
             if self.CCW: v_p = - v_p # Hess and Smith integrals are calculated with clock wise ordering        
             
         
-        return self.mu/(4 * np.pi) * v_p.changeBasis(self.A.T)
+        return - self.mu/(4 * np.pi) * v_p.changeBasis(self.A.T)
 
 
 class SurfacePanel(Source, Doublet):
@@ -973,7 +973,7 @@ class SurfacePanel(Source, Doublet):
             r_ij = (r_centroid_rot - self.r_centroid).changeBasis(self.A)
             A[j][0], A[j][1], = r_ij.x, r_ij.y
             b[j][0] = panel_j.mu - self.mu
-            
+          
         # nabla_mu = LeastSquares(A, b)
         nabla_mu, _, _, _ = np.linalg.lstsq(A, b)
         
@@ -982,6 +982,60 @@ class SurfacePanel(Source, Doublet):
         self.V = Vector(vl, vm, vn).changeBasis(self.A.T) + Vfs
         
         pass
+
+    # def setSurfaceVelocity(self, adjacentPanels, Vfs):
+        
+    #     """
+    #     V = Vx*ex + Vy*ey + Vz*ez or u*i + V*j  + w*k (body-fixed frame of ref)
+        
+    #     V = Vl*l + Vm*m + Vn*n (panel's local frame of reference)
+        
+    #     sigma = (e_n * nabla)(φ - φ_i) = (e_n * nabla)(φ - φ_infty) =>
+    #     sigma = e_n * (V - V_infty) = e_n * (v + V_infty - V_infty) =>
+    #     sigma = e_n * v = vn
+        
+    #     μ = φ - φ_i = φ - φ_infty => nabla μ = nabla (φ - φ_infty) = V - V_infty
+    #     nabla μ = v + V_infty - V_infty => nabla μ = v
+        
+    #     (r_ij * nabla)μ = μ_j - μ_i
+        
+    #     (r_ij * nabla)μ = Δl_ij*dμ/dl + Δm_ij*dμ/dm + Δn_ij*dμ/dn 
+    #                     =~ Δl_ij*dμ/dl + Δm_ij*dμ/dm
+        
+                
+    #     (r_ij * nabla)μ = Δl_ij(vl) + Δm_ij(vm) = μ_j - μ_i
+        
+    #     [[Δl_i1 , Δm_i1]                [[μ_1 - μ_i]
+    #     [Δl_i2 , Δm_i2]      [[vl]       [μ_2 - μ_i]
+    #     [Δl_i3 , Δm_i3]  =    [vm]]  =   [μ_3 - μ_i]
+    #         ....                            ....
+    #     [Δl_iN , Δm_iN]]                 [μ_4 - μ_i]]
+        
+    #     least squares method ---> vl, vm
+    #     """
+        
+    #     n = len(adjacentPanels)
+    #     A = np.zeros((n, 2))
+    #     b = np.zeros((n, 1))
+        
+    #     for j in range(n):
+                        
+    #         r_ij = (
+    #             adjacentPanels[j].r_centroid - self.r_centroid
+    #         ).changeBasis(self.A)
+            
+    #         A[j][0], A[j][1], = r_ij.x, r_ij.y
+            
+    #         b[j][0] = adjacentPanels[j].mu - self.mu
+        
+    #     # nabla_mu = LeastSquares(A, b)
+    #     nabla_mu, _, _, _ = np.linalg.lstsq(A, b)
+        
+    #     vl, vm, vn = nabla_mu[0][0], nabla_mu[1][0], self.sigma
+        
+    #     self.V = Vector(vl, vm, vn).changeBasis(self.A.T) + Vfs
+        
+    #     pass
 
 
 class WakePanel(Doublet):
@@ -1536,9 +1590,9 @@ if __name__=='__main__':
     
     # testQuadPanel()
     
-    testSourcePanel()
+    # testSourcePanel()
     
-    # testDoubletPanel()
+    testDoubletPanel()
     
     # testSurfacePanel(r_p=Vector(2, 2, 2))
     pass

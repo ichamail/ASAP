@@ -1,7 +1,7 @@
 import numpy as np
 from rigid_body_class import RigidBody
 from vector_class import Vector
-
+from matplotlib import pyplot, colormaps as plt, cm
 
 class BoundaryElementMethod:
     
@@ -222,11 +222,43 @@ class BoundaryElementMethod:
               
         return phi_fs + self.inducedVelocityPotential(r_p)
     
+    def plotSurfacePressureCoefficientContour(
+        self, elevation=30, azimuth=-60, bodyFixedFrame=False
+    ):
+        ax, fig = self.rigidBody.plot(elevation, azimuth, bodyFixedFrame)
+        Cp = [panel.Cp for panel in bem.surfacePanel]
+        CpMin, CpMax = min(Cp), max(Cp)
+        NormCp = [(float(Cp_i)-CpMin)/(CpMax-CpMin) for Cp_i in Cp]
+        facecolor = plt.cm.coolwarm(NormCp)
+        ax.collections[0].set_facecolor(facecolor)
+        
+        m = cm.ScalarMappable(cmap=cm.coolwarm)
+        m.set_array([CpMin, CpMax])
+        m.set_clim(vmin=CpMin,vmax=CpMax)
+        Cbar = fig.colorbar(m, ax=ax)
+        Cbar.set_ticks(np.linspace(CpMin, CpMax, 6))
+        Cbar.set_ticklabels(
+            [str(round(x,2)) for x in np.linspace(CpMin, CpMax, 6)]
+        )
+        Cbar.set_label("Cp", rotation=0)
+        
+        return ax, fig
     
+    def displaySurfacePressureCoefficientContour(
+        self, elevation=30, azimuth=-60, bodyFixedFrame=False
+    ):
+        self.plotSurfacePressureCoefficientContour(
+            elevation, azimuth, bodyFixedFrame
+        )
+        
+        plt.show()
+
+
+ 
 if __name__=="__main__":
     from sphere_class import Sphere
     from mesh_class import PanelMesh
-    from matplotlib import pyplot as plt
+    
     
     bem = BoundaryElementMethod(
         rigidBody=RigidBody(
@@ -239,7 +271,7 @@ if __name__=="__main__":
             name="Unit Sphere"
         )
     )
-    
+        
     bem.setVfs(
         angleOfAttack=0,
         sideSlipAngle=0,
@@ -254,13 +286,5 @@ if __name__=="__main__":
     
     bem.solve()
     
-    ax, fig = bem.rigidBody.plot(bodyFixedFrame=False)
+    bem.displaySurfacePressureCoefficientContour()
     
-    Cp = [panel.Cp for panel in bem.surfacePanel]
-    Cp_norm = [(float(Cp_i)-min(Cp))/(max(Cp)-min(Cp)) for Cp_i in Cp]
-    facecolor = plt.cm.coolwarm(Cp_norm)
-    ax.collections[0].set_facecolor(facecolor)
-    
-    plt.show()
-    
-    pass
