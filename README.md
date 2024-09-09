@@ -375,10 +375,12 @@ note: $` \sigma = (\underline{e}_n \cdot \nabla)(\phi - \phi_i) = (\underline{e}
 ``` 
 
 where:
-   * $` B_{ij} = - \frac{1}{4 \pi} \iint_{S_j}  \frac{1}{\lVert \underline{r} - \underline{r}_{cp_i} \rVert} \mathrm{d}{S_j}  = - \frac{1}{4\pi} \iint_{S_j} \frac{1}{\sqrt{(l_{j} - l_{j_{cp_i}})^2 + (m_{j} - m_{j_{cp_i}})^2 + n_{j}^2}}  \mathrm{d}S_j `$
+   * $` B_{ij} = - \frac{1}{4 \pi} \iint_{S_j}  \frac{1}{\lVert \underline{r} - \underline{r}_{cp_i} \rVert} \mathrm{d}{S_j}  = - \frac{1}{4\pi} \iint_{S_j} \frac{1}{\sqrt{(l_{j} - l_{j_{cp_i}})^2 + (m_{j} - m_{j_{cp_i}})^2 + (n_{j} - n_{j_{cp_i}})^2}}  \mathrm{d}S_j = - \frac{1}{4\pi} \iint_{S_j} \frac{1}{\sqrt{(l_{j} - l_{j_{cp_i}})^2 + (m_{j} - m_{j_{cp_i}})^2 + n_{j_{cp_i}}^2}}  \mathrm{d}S_j `$
 
    * $` C_{ij} =  \frac{1}{4\pi} \iint_{S_j}  (\underline{e}_n \cdot \nabla) \frac{1}{\lVert \underline{r} - \underline{r}_{cp_i} \rVert} \mathrm{d}{S_j} = - \frac{1}{4\pi} \iint_{S_j}
-\frac{n_{j}}{\left( \sqrt{(l_{j} - l_{j_{cp_i}})^2 + (m_{j} - m_{j_{cp_i}})^2 + n_{j}^2} \right)^3} \mathrm{d}S_j `$
+\frac{n_{j} - n_{j_{cp_i}}}{\left( \sqrt{(l_{j} - l_{j_{cp_i}})^2 + (m_{j} - m_{j_{cp_i}})^2 + (n_{j} - n_{j_{cp_i}})^2} \right)^3} \mathrm{d}S_j =
+\frac{1}{4\pi} \iint_{S_j}
+\frac{n_{j_{cp_i}}}{\left( \sqrt{(l_{j} - l_{j_{cp_i}})^2 + (m_{j} - m_{j_{cp_i}})^2 + n_{j_{cp_i}}^2} \right)^3} \mathrm{d}S_j `$
    
    * $` \sigma_j = - \underline{e}_{n_j} \cdot \underline{V}_\infty `$
 
@@ -467,8 +469,3 @@ where $`NWP_j`$ is the number of panels that the wake row shedding from the $`j`
 ![bwb - Cp - AoA = 4 - wake roll up - SS](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/bec3b10f-83c4-452e-93bf-01234ebdf13f)
 
 ![bwb - Cp - AoA = 4 - wake roll up - PS](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/b17caf9b-d4f2-4899-9835-ffa1c909fdbe)
-
-
-
-
-
