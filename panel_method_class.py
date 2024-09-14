@@ -1,11 +1,11 @@
 import numpy as np
-from rigid_body_class import RigidBody
+from rigid_body_class import RigidBody, RigidAerodynamicBody
 from vector_class import Vector
-from matplotlib import pyplot, colormaps as plt, cm
+from matplotlib import pyplot as plt, cm
 
 class BoundaryElementMethod:
     
-    def __init__(self, rigidBody:RigidBody) -> None:
+    def __init__(self, rigidBody:RigidBody|RigidAerodynamicBody) -> None:
         self.rigidBody = rigidBody
         
         self.Bij = np.zeros(
@@ -88,13 +88,15 @@ class BoundaryElementMethod:
         )
     
     def computeSurfaceInfluence(self):
-        for panel_i in self.surfacePanel:
-            for panel_j in self.surfacePanel:
-                (
-                    self.Bij[panel_i.id][panel_j.id],
-                    self.Cij[panel_i.id][panel_j.id]
-                ) = (
-                    panel_j.unitStrength_inducedVelocityPotential(panel_i.r_cp)
+        
+        for i in range(self.surface.numOfFaces):
+            
+            for j in range(self.surface.numOfFaces):
+                
+                self.Bij[i][j], self.Cij[i][j] = (
+                    self.surface.panel[j].unitStrength_inducedVelocityPotential(
+                        self.surface.panel[i].r_cp
+                    )
                 )
         pass
     
@@ -110,8 +112,8 @@ class BoundaryElementMethod:
     
     def solveLinearSystem(self):
         mu = np.linalg.solve(self.Aij, self.RHS)
-        for panel in self.surfacePanel:
-            panel.mu = mu[panel.id]
+        for i in range(self.surface.numOfFaces):
+            self.surface.panel[i].mu = mu[i]
         pass
     
     def advanceSolution(self):
@@ -122,17 +124,17 @@ class BoundaryElementMethod:
         
         if self.rigidBody.omega.norm() != 0:
             
-            for panel in self.surfacePanel:
-                panel.setSurfaceVelocity(
-                    self.surface.getPanelsAdjacentPanels(panel.id),
-                    self.Vfs_at(panel.r_centroid)
+            for i in range(self.surface.numOfFaces):
+                self.surface.panel[i].setSurfaceVelocity(
+                    self.surface.getPanelsAdjacentPanels(panelIndex=i),
+                    self.Vfs_at(self.surface.panel[i].r_centroid)
                 )        
         else:
             
             Vfs = self.Vfs_atBodyFixedFrameOrigin()
-            for panel in self.surfacePanel:
-                panel.setSurfaceVelocity(
-                    self.surface.getPanelsAdjacentPanels(panel.id), Vfs
+            for i in range(self.surface.numOfFaces):
+                self.surface.panel[i].setSurfaceVelocity(
+                    self.surface.getPanelsAdjacentPanels(panelIndex=i), Vfs
                 )
         pass
     
@@ -164,7 +166,7 @@ class BoundaryElementMethod:
         """
         
         Vinduced = Vector(0, 0, 0)
-        for panel in self.surface.panel:
+        for panel in self.surfacePanel:
             Vinduced = Vinduced + panel.inducedVelocity(r_p)
         
         return Vinduced
@@ -254,7 +256,316 @@ class BoundaryElementMethod:
         plt.show()
 
 
- 
+class PanelMethod(BoundaryElementMethod):
+    def __init__(self, rigidBody: RigidAerodynamicBody) -> None:
+        super().__init__(rigidBody)
+        
+        self.steadyState = None
+        
+        if self.wake:
+            
+            self.Cij = np.pad(self.Cij, ((0, 0), (0, self.wake.numOfFaces)))
+    
+    @property
+    def wake(self):
+        return self.rigidBody.wake
+        
+    def computeWakeInfluence(self):
+               
+        self.Cij = np.pad(
+            self.Cij[:, 0:self.surface.numOfFaces],
+            ((0, 0), (0, self.wake.numOfFaces))
+        )
+        
+        index = self.wakeFaceIndex
+        
+        if not self.rigidBody.isWakeFree:
+            
+            for i in range(self.surface.numOfFaces):
+                
+                for j in range(self.wake.numOfWakeRows):
+                    
+                    for k in range(self.wake.numOfFacesPerWakeRow):
+                        
+                        self.Cij[i][index(wakeRowIndex=j, wakefaceIndex=k)] = \
+                            self.wake.wakeRow[j].panel[k].unitStrength_inducedVelocityPotential(
+                                self.surface.panel[i].r_cp
+                            )
+        
+        else:
+            
+            for i in range(self.surface.numOfFaces):
+                
+                for j in range(self.wake.numOfWakeRows):
+                    
+                    for k in range(self.wake.numOfFacesPerWakeRow):
+                        
+                        self.Cij[i][index(wakeRowIndex=j, wakefaceIndex=k)] = \
+                            self.wake.wakeRow[j].panel[k].unitStrength_inducedVelocityPotential(
+                                self.rigidBody.ro 
+                                + self.surface.panel[i].r_cp.changeBasis(
+                                    self.rigidBody.A.T
+                                )
+                            )
+                        
+        pass
+    
+    @property
+    def Aij(self):
+        
+        Aij = np.array(self.Cij[:, :self.surface.numOfFaces])
+        index = self.wakeFaceIndex
+        
+        if self.steadyState :
+            
+            for i in range(self.surface.numOfFaces):
+                
+                for j in range(self.wake.numOfWakeRows):
+                    
+                    upperSheddingFaceIndex, lowerSheddingFaceIndex = \
+                        self.rigidBody.sheddingFaces[j]
+                    
+                    for k in range(self.wake.numOfFacesPerWakeRow):
+                        
+                        Aij[i][upperSheddingFaceIndex] += \
+                            self.Cij[i][index(wakeRowIndex=j, wakefaceIndex=k)]
+                            
+                        Aij[i][lowerSheddingFaceIndex] -= \
+                            self.Cij[i][index(wakeRowIndex=j, wakefaceIndex=k)]
+                        
+        elif not self.steadyState:
+            
+            for i in range(self.surface.numOfFaces):
+                
+                for j in range(self.wake.numOfWakeRows):
+                    
+                    upperSheddingFaceIndex, lowerSheddingFaceIndex = \
+                        self.rigidBody.sheddingFaces[j]
+                    
+                    Aij[i][upperSheddingFaceIndex] += \
+                        self.Cij[i][index(wakeRowIndex=j, wakefaceIndex=0)]
+                        
+                    Aij[i][upperSheddingFaceIndex] -= \
+                        self.Cij[i][index(wakeRowIndex=j, wakefaceIndex=0)]
+        
+        pass                  
+    
+    @property
+    def RHS(self):
+        if self.steadyState:
+            
+            return super().RHS
+        
+        else:            
+            sigma_columnVector = np.array(
+                [panel.sigma for panel in self.surfacePanel]
+            )
+            
+            mu_columnVector = np.array(
+                [
+                    self.wake.wakeRow[i].panel[j].mu 
+                    for i in range(self.wake.numOfWakeRows) 
+                    for j in range(1, self.wake.numOfFacesPerWakeRow)
+                ]
+            )
+                       
+            indexList = [
+                    self.wakeFaceIndex(wakeRowIndex=i, wakefaceIndex=j) 
+                    for i in range(self.wake.numOfWakeRows) 
+                    for j in range(1, self.wake.numOfFacesPerWakeRow)
+                ]
+              
+            RHS = - self.Bij @ sigma_columnVector \
+                - self.Cij[:, indexList] @ mu_columnVector
+            
+            return RHS 
+    
+    def wakeFaceIndex(self, wakeRowIndex, wakefaceIndex):
+        return (
+            self.surface.numOfFaces 
+            + wakeRowIndex * self.wake.numOfFacesPerWakeRow + wakefaceIndex
+        )
+    
+    def setTrailingEdge(self, trailingEdgeVerticesIDs:list[int]):
+        self.rigidBody.setTrailingEdge(
+            trailingEdgeVerticesIDs
+        )
+    
+    def locateSheddingFaces(self):
+        self.rigidBody.locateSheddingFaces()
+    
+    def setSheddingFaces(
+        self, upperSheddingFacesIDs:list[int], lowerSheddingFacesIDs:list[int]
+    ):
+        self.rigidBody.setSheddingFaces(
+            upperSheddingFacesIDs, lowerSheddingFacesIDs
+        )
+    
+    def setWake(
+        self, length:float, numOfWakeFaces:int,
+        faceType:str="Quads", isWakeFree:bool=False
+    ):
+        self.rigidBody.setWake(
+            length, numOfWakeFaces, faceType, isWakeFree
+        )  
+            
+    def setVfs(
+        self, angleOfAttack: float, sideSlipAngle: float, magnitude: float
+    ):
+        super().setVfs(angleOfAttack, sideSlipAngle, magnitude)
+        
+        if self.rigidBody.isWakeFree:
+            
+            self.rigidBody.wake.setWakeLinesRefFrameOrientation(
+                theta_x=0, theta_y=0, theta_z=0
+            )
+            
+            self.rigidBody.wake.setWakeLinesRefFrameOrigin(
+                trailingEdgeVertex=np.array(
+                    [
+                        self.rigidBody.getVertex(
+                            vertex_id, bodyFixedFrame=False
+                        )
+                        for vertex_id in self.trailingEdge
+                    ]
+                )
+            )
+            
+        else:
+            
+            self.wake.setWakeLinesRefFrameOrientationMatrix(self.rigidBody.A.T)
+        
+        self.rigidBody.wake.Vinf = self.Vinf
+    
+    def setVinf(self, angleOfAttack: float, sideSlipAngle: float, magnitude: float):
+        self.rigidBody.set_BodyFixedFrame_orientation(0, 0, 0)
+        self.rigidBody.set_BodyFixedFrame_angular_velocity(0, 0, 0)
+        self.rigidBody.set_BodyFixedFrame_origin_velocity(0, 0, 0)
+        
+        self.rigidBody.wake.setWakeLinesRefFrameOrientation(
+            theta_x=0, theta_y=-angleOfAttack, theta_z=-sideSlipAngle
+        )
+        
+        self.Vinf = magnitude * Vector(1, 0, 0).changeBasis(
+            self.rigidBody.wake.wakeLine[0].A.T
+        )
+        
+        self.rigidBody.wake.Vinf = self.Vinf
+    
+    def inducedVelocity(self, r_p: Vector) -> Vector:
+        
+        surfaceInducedVelocity = super().inducedVelocity(r_p)      
+        
+        if self.rigidBody.isWakeFree:
+            r_p = self.rigidBody.ro + r_p.changeBasis(self.rigidBody.A.T)
+        
+        wakeInducedVelocity = Vector(0, 0, 0)
+        
+        for i in range(self.wake.numOfWakeRows):
+                
+            for j in range(self.wake.numOfFacesPerWakeRow):
+                
+                wakeInducedVelocity = wakeInducedVelocity + \
+                    self.wake.wakeRow[i].panel[j].inducedVelocity(r_p)
+        
+        
+        if self.rigidBody.isWakeFree:
+            wakeInducedVelocity = wakeInducedVelocity.changeBasis(
+                self.rigidBody.A
+        )
+        
+        return surfaceInducedVelocity + wakeInducedVelocity
+     
+    def inducedVelocityPotential(self, r_p: Vector) -> float:
+        
+        phi_induced =  super().inducedVelocityPotential(r_p)
+        
+        if self.rigidBody.isWakeFree:
+            
+            r_p = self.rigidBody.ro + r_p.changeBasis(self.rigidBody.A.T)
+            
+        for i in range(self.wake.numOfWakeRows):
+                
+            for j in range(self.wake.numOfFacesPerWakeRow):
+                
+                phi_induced = phi_induced + \
+                    self.wake.wakeRow[i].panel[j].inducedVelocityPotential(r_p)
+
+    def solveLinearSystem(self):
+        
+        self.computeWakeInfluence()
+        
+        super().solveLinearSystem()
+        
+        if self.steadyState:
+            
+            for wakeRowIndex in range(self.wake.numOfWakeRows):
+                
+                upperSheddingFaceIndex, lowerSheddingFaceIndex = \
+                        self.rigidBody.sheddingFaces[wakeRowIndex]
+                
+                mu = self.surfacePanel[upperSheddingFaceIndex].mu \
+                    - self.surfacePanel[lowerSheddingFaceIndex].mu
+                        
+                for wakeFaceIndex in range(self.wake.numOfFacesPerWakeRow):
+                    
+                    self.wake.wakeRow[wakeRowIndex].panel[wakeFaceIndex].mu = mu
+        
+        else:
+                    
+            for wakeRowIndex in range(self.wake.numOfWakeRows):
+                
+                upperSheddingFaceIndex, lowerSheddingFaceIndex = \
+                        self.rigidBody.sheddingFaces[wakeRowIndex]
+                
+                self.wake.wakeRow[wakeRowIndex].panel[0].mu = (
+                    self.surfacePanel[upperSheddingFaceIndex].mu
+                    - self.surfacePanel[lowerSheddingFaceIndex].mu
+                )
+                     
+        pass       
+        
+    def solveIteratively(self, iters:int = 10):
+        pass
+    
+    def solveUnsteady(self, dt:float, iters:int):
+        pass
+    
+    def solve(self, steadyState=True, iters=0):
+        
+        if steadyState:
+            
+            if iters==0:
+                
+                self.steadyState = steadyState
+                
+                return super().solve()
+            
+            else:
+
+                return self.solveIteratively(iters)
+            
+        else:
+            
+            V = self.Vfs_at(
+                r_rigidBodyPoint=Vector(
+                    *self.rigidBody.getVertex(
+                        vertex_id=self.rigidBody.trailingEdge[
+                            self.wake.numOfWakeLines//2
+                        ],
+                        bodyFixedFrame=True
+                    )
+                )
+            ).norm()
+                        
+            length = max([panel.charLength for panel in self.surfacePanel])
+            
+            dt = length/V 
+                    
+            self.solveUnsteady(dt, iters)
+       
+        
+        
 if __name__=="__main__":
     from sphere_class import Sphere
     from mesh_class import PanelMesh

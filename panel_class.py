@@ -13,10 +13,8 @@ class Panel:
     
     collocationPoint_offset:float = 10**(-8)
     
-    def __init__(self, vertices:np.ndarray, CCW:bool=True, id:int=-1):
-        
-        self.id:int = id  # panel's identity
-        
+    def __init__(self, vertices:np.ndarray, CCW:bool=True):
+                
         self.CCW:bool
         self.numOfVertices:int
         self.r:np.ndarray[np.dtype[Vector]]
@@ -265,14 +263,14 @@ class Panel:
    
 class QuadPanel(Panel):
     
-    def __init__(self, vertices:np.ndarray, CCW:bool=True, id:int=-1):
+    def __init__(self, vertices:np.ndarray, CCW:bool=True):
         
         # VSAero atributes
         self.SMP:float
         self.SMQ:float
         self.T:Vector
         
-        super().__init__(vertices, CCW, id)
+        super().__init__(vertices, CCW)
        
     def set_e_n_and_area(self):
         
@@ -313,9 +311,9 @@ class QuadPanel(Panel):
         
 class TriPanel(Panel):
     
-    def __init__(self, vertices:np.ndarray, CCW:bool=True, id:int=-1):
+    def __init__(self, vertices:np.ndarray, CCW:bool=True):
         
-        super().__init__(vertices, CCW, id)
+        super().__init__(vertices, CCW)
         
     def set_e_n_and_area(self):
         
@@ -330,8 +328,8 @@ class Source(Panel):
     
     farFieldFactor:float = 10
     
-    def __init__(self, vertices: np.ndarray, CCW: bool = True, id:int=-1):
-        super().__init__(vertices, CCW, id)
+    def __init__(self, vertices: np.ndarray, CCW: bool = True):
+        super().__init__(vertices, CCW)
         
         self.sigma:float = 0
     
@@ -647,8 +645,8 @@ class Doublet(Panel):
     
     farFieldFactor:float = 10
     
-    def __init__(self, vertices: np.ndarray, CCW: bool = True, id:int=-1):
-        super().__init__(vertices, CCW, id)
+    def __init__(self, vertices: np.ndarray, CCW: bool = True):
+        super().__init__(vertices, CCW)
         
         self.mu:float = 0
         

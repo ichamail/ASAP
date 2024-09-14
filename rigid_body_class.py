@@ -345,7 +345,7 @@ class RigidAerodynamicBody(RigidBody):
         self.wake = None
         self.isWakeFree = False
     
-    def set_trailingEdge(self, trailingEdgeVerticesIDs:list[int]):
+    def setTrailingEdge(self, trailingEdgeVerticesIDs:list[int]):
         self.trailingEdge = np.array(trailingEdgeVerticesIDs)
        
     def locateSheddingFaces(self):
@@ -367,11 +367,11 @@ class RigidAerodynamicBody(RigidBody):
                     self.sheddingFaces[i][j] = face_id
                     j = j + 1
     
-    def setSheddingFace(
-        self, upperSheddingFaces_idList, lowerSheddingFaces_idList
+    def setSheddingFaces(
+        self, upperSheddingFacesIDs:list[int], lowerSheddingFacesIDs:list[int]
         ):
         self.sheddingFaces = np.column_stack(
-            (upperSheddingFaces_idList, lowerSheddingFaces_idList)
+            (upperSheddingFacesIDs, lowerSheddingFacesIDs)
         )
     
     def setWake(
@@ -448,12 +448,12 @@ class RigidAerodynamicBody(RigidBody):
         # ]
         
         vertex = np.zeros(
-            shape=(self.wake.numOfWakeLines, self.wake.numOfWakeVertices),
+            shape=(self.wake.numOfWakeLines, self.wake.numOfVerticesPerWakeLine),
             dtype=tuple
         )
 
         for wakeLineIndex in range(self.wake.numOfWakeLines):
-            for vertexIndex in range(self.wake.numOfWakeVertices):
+            for vertexIndex in range(self.wake.numOfVerticesPerWakeLine):
                 vertex[wakeLineIndex][vertexIndex] = self.getWakeVertex(
                     wakeLineIndex, vertexIndex, bodyFixedFrame
                 )
@@ -468,7 +468,7 @@ class RigidAerodynamicBody(RigidBody):
                 ]
             )
             for wakeRowIndex in range(self.wake.numOfWakeRows)
-            for faceIndex in range(self.wake.numOfWakeFaces)
+            for faceIndex in range(self.wake.numOfFacesPerWakeRow)
         ]
              
     def plot(
@@ -492,7 +492,7 @@ class RigidAerodynamicBody(RigidBody):
             verts = np.array(
                 [
                     self.getWakeVertex(
-                        wakeLineIndex, self.wake.numOfWakeVertices-1, bodyFixedFrame
+                        wakeLineIndex, self.wake.numOfVerticesPerWakeLine-1, bodyFixedFrame
                     )
                     for wakeLineIndex in range(self.wake.numOfWakeLines)
                 ]
@@ -542,7 +542,10 @@ class RigidAerodynamicBody(RigidBody):
     
     def ravelFreeWake(self, dt):
         
-        self.wake.moveWakeFixedFrames(dt)
+        # self.wake.moveWakeFixedFrames(dt) # this method updates panels' positions
+        
+        if self.wake.Vinf != Vector(0, 0, 0):
+            self.wake.moveWakeLinesRefFrames(dt) # this method updates panels' positions
             
         self.wake.shed(
             trailingEdgeVertex=np.array(
@@ -556,7 +559,7 @@ class RigidAerodynamicBody(RigidBody):
     def ravelSurfaceFixedWake(self, dt):
         
         for wakeLineIndex in range(self.wake.numOfWakeLines):
-            for vertexIndex in range(self.wake.numOfWakeVertices):
+            for vertexIndex in range(self.wake.numOfVerticesPerWakeLine):
                                 
                 # r = Vector(
                 #     *self.getWakeVertex(
@@ -581,9 +584,8 @@ class RigidAerodynamicBody(RigidBody):
                                                     
                 self.wake.wakeLine[wakeLineIndex].moveVertex(vertexIndex,dr)
         
-        for i in range(self.wake.numOfWakeRows):
-            self.wake.wakeRow[i].updatePanelsPosition()  # free wake doesn't need update
-        
+        self.wake.updatePanelsPosition() # free wake doesn't need update
+                
         self.wake.shed(
             trailingEdgeVertex=np.array(
                 [
@@ -596,51 +598,58 @@ class RigidAerodynamicBody(RigidBody):
         pass
         
         
+def Test_rigidAerodynamicBody():
+    
+    rigidAerodynamicBody = RigidAerodynamicBody(
+        surfaceMesh=PanelMesh(
+            *Wing(
+                root_airfoil=Airfoil(name="naca0012 sharp", chordLength=0.5),
+                tip_airfoil=Airfoil(name="naca0012 sharp", chordLength=0.5),
+                halfSpan=0.5 
+            ).meshSurface(
+                numOfChordWiseFaces=5,
+                numOfSpanWiseFaces=2,
+                faceType="quadrilateral",
+                chordWiseSpacing="cosine",
+                spanWiseSpacing="uniform",
+                mesh_MainSurface=True,
+                mesh_WingTips=True,
+            )
+        ),
+        name="flying wing"
+    )
+    
+    rigidAerodynamicBody.set_BodyFixedFrame_origin(xo=1, yo=1, zo=1)
 
+    
+    rigidAerodynamicBody.setTrailingEdge(
+        trailingEdgeVerticesIDs=[0, 1, 2, 3, 4]
+    )
+    rigidAerodynamicBody.setWake(
+        length=2,
+        numOfWakeFaces=2,
+        faceType="Quads",
+        isWakeFree=True
+    )
+    rigidAerodynamicBody.display(bodyFixedFrame=False, displayWake=True)
+    
+    # rigidAerodynamicBody.set_BodyFixedFrame_origin_velocity(
+    #     Vo_x=-0.5, Vo_y=0, Vo_z=0
+    # )
+    
+    # rigidAerodynamicBody.set_BodyFixedFrame_angular_velocity(20, 0, 0)
+    
+    rigidAerodynamicBody.wake.Vinf = Vector(0.5, 0, 0)
+    
+    for i in range(90):
+        rigidAerodynamicBody.move_BodyFixedFrame(dt=0.05)
+    
+    rigidAerodynamicBody.display(bodyFixedFrame=False, displayWake=True)    
 
 if __name__=="__main__":
     from airfoil_class import Airfoil
     from wing_class import Wing
     
-    vertex, face = Wing(
-        root_airfoil=Airfoil(name="naca0012 sharp", chordLength=0.5),
-        tip_airfoil=Airfoil(name="naca0012 sharp", chordLength=0.5),
-        halfSpan=0.5
-    ).meshSurface(
-        numOfChordWiseFaces=5,
-        numOfSpanWiseFaces=2,
-        faceType="quadrilateral",
-        chordWiseSpacing="cosine",
-        spanWiseSpacing="uniform",
-        mesh_MainSurface=True,
-        mesh_WingTips=True,
-    )
-    
-    # wingMesh = Mesh(vertex, face)
-    wingMesh = PanelMesh(vertex, face)
-    
-    
-    
-    flyingObject = RigidAerodynamicBody(surfaceMesh=wingMesh)
-    
-    flyingObject.set_BodyFixedFrame_origin(1, 1, 1)
-
-    
-    flyingObject.set_trailingEdge([0, 1, 2, 3, 4])
-    flyingObject.setWake(2, 2, isWakeFree=True)
-    flyingObject.display(bodyFixedFrame=False, displayWake=True)
-    
-    flyingObject.set_BodyFixedFrame_origin_velocity(
-        Vo_x=-0.5, Vo_y=0, Vo_z=0
-    )
-    
-    flyingObject.set_BodyFixedFrame_angular_velocity(20, 0, 0)
-    
-    # flyingObject.wake.Vinf = Vector(0.5, 0, 0)
-    
-    for i in range(90):
-        flyingObject.move_BodyFixedFrame(dt=0.05)
-    
-    flyingObject.display(bodyFixedFrame=False, displayWake=True)
+    Test_rigidAerodynamicBody()
     
     pass

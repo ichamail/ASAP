@@ -191,11 +191,11 @@ class PanelMesh(Mesh):
         self.panel:np.ndarray[SurfaceTriPanel|SurfaceQuadPanel] = np.array(
             [
                 SurfaceTriPanel(
-                    vertices=self.getFaceVertices(face_id=id), CCW=True, id=id
+                    vertices=self.getFaceVertices(face_id=id), CCW=True
                 )
                 if len(self.getFace(face_id=id)) == 3 else
                 SurfaceQuadPanel(
-                    vertices=self.getFaceVertices(face_id=id), CCW=True, id=id
+                    vertices=self.getFaceVertices(face_id=id), CCW=True
                 )
                 for id in range(self.numOfFaces)
             ]

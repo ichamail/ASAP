@@ -58,8 +58,14 @@ class WakeLine:
                        [-np.sin(theta_z), np.cos(theta_z), 0],
                        [0, 0, 1]])
         
-        self.A = Az @ Ay @ Ax
-        
+        self.setRefFrameOrientationMatrix(Az @ Ay @ Ax)
+    
+    def setRefFrameOrientationMatrix(self, A):
+        self.A = np.copy(A)
+    
+    def setRefFrameOrigin(self, xo, yo, zo):
+        self.ro = Vector(xo, yo, zo)
+       
     def getVertexPositionVector(self, index:int):
         return self.ro + Vector(*self.vertex[index]).changeBasis(self.A.T)
         
@@ -209,7 +215,8 @@ class WakePanelRow(WakeRow):
     def updatePanelsPosition(self):
         for i in range(self.numOfFaces):
             self.panel[i].set_vertices(vertices=self.getFace(i), CCW=True)
-                    
+
+                  
 class Wake:
     
     def __init__(
@@ -224,19 +231,27 @@ class Wake:
         
         self.setWakeRows(faceType)
         
-        self.V_inf = Vector(0, 0 , 0)
+        self.Vinf = Vector(0, 0 , 0)
         
         pass
         
     @property
-    def numOfWakeVertices(self):
+    def numOfVerticesPerWakeLine(self):
         # number of wake vertices per wake line
         return self.wakeLine[0].numOfVertices
+    
+    @property
+    def numOfVertices(self):
+        return self.numOfWakeLines * self.numOfVerticesPerWakeLine
                
     @property
-    def numOfWakeFaces(self):
+    def numOfFacesPerWakeRow(self):
         # number of wake faces per wake row
         return self.wakeRow[0].numOfFaces
+    
+    @property
+    def numOfFaces(self):
+        return self.numOfWakeRows * self.numOfFacesPerWakeRow
     
     @property
     def faceType(self):
@@ -282,7 +297,7 @@ class Wake:
         
         if (
             0 <= wakeRowIndex < self.numOfWakeRows
-            and 0 <= faceIndex < self.numOfWakeFaces
+            and 0 <= faceIndex < self.numOfFacesPerWakeRow
         ):
             # just for readability
             wakeLineIndex = wakeRowIndex 
@@ -308,12 +323,12 @@ class Wake:
         # ]
         
         vertex = np.zeros(
-            shape=(self.numOfWakeLines, self.numOfWakeVertices),
+            shape=(self.numOfWakeLines, self.numOfVerticesPerWakeLine),
             dtype=tuple
         )
 
         for i in range(self.numOfWakeLines):
-            for j in range(self.numOfWakeVertices):
+            for j in range(self.numOfVerticesPerWakeLine):
                 vertex[i][j] = self.wakeLine[i].getVertex(j)
         
         return [
@@ -324,7 +339,7 @@ class Wake:
                 ]
             )
             for I in range(self.numOfWakeRows)
-            for J in range(self.numOfWakeFaces)
+            for J in range(self.numOfFacesPerWakeRow)
         ]
 
     def plot(self, elevation=30, azimuth=-60):
@@ -431,7 +446,19 @@ class Wake:
         for i in range(self.numOfWakeLines):
             self.wakeLine[i].addTrailingVertex(*trailingEdgeVertex[i])     
 
-    def moveWakeFixedFrames(self, dt):
+    def setWakeLinesRefFrameOrientation(self, theta_x, theta_y, theta_z):
+        for i in range(self.numOfWakeLines):
+            self.wakeLine[i].setRefFrameOrientation(theta_x, theta_y, theta_z)
+
+    def setWakeLinesRefFrameOrientationMatrix(self, A):
+        for i in range(self.numOfWakeLines):
+            self.wakeLine[i].setRefFrameOrientationMatrix(A)
+    
+    def setWakeLinesRefFrameOrigin(self, trailingEdgeVertex):
+        for i in range(self.numOfWakeLines):
+            self.wakeLine[i].setRefFrameOrigin(*trailingEdgeVertex[i])
+    
+    def moveWakeLinesRefFrames(self, dt):
         for i in range(self.numOfWakeLines):
             self.wakeLine[i].moveWakeFixedFrame(dt)
 
@@ -458,6 +485,26 @@ class PanelWake(Wake):
             self.wakeRow[i].addTrailingPanel()
             
         pass
+
+    def updatePanelsPosition(self):
+        for i in range(self.numOfWakeRows):
+            self.wakeRow[i].updatePanelsPosition()
+    
+    def setWakeLinesRefFrameOrientation(self, theta_x, theta_y, theta_z):
+        super().setWakeLinesRefFrameOrientation(theta_x, theta_y, theta_z)
+        self.updatePanelsPosition()
+    
+    def setWakeLinesRefFrameOrientationMatrix(self, A):
+        super().setWakeLinesRefFrameOrientationMatrix(A)
+        self.updatePanelsPosition()
+    
+    def setWakeLinesRefFrameOrigin(self, trailingEdgeVertex):
+        super().setWakeLinesRefFrameOrigin(trailingEdgeVertex)
+        self.updatePanelsPosition()
+        
+    def moveWakeLinesRefFrames(self, dt):
+        super().moveWakeLinesRefFrames(dt)
+        self.updatePanelsPosition()
     
 if __name__=="__main__":
     
