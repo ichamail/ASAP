@@ -1047,6 +1047,24 @@ class SurfaceTriPanel(TriPanel, SurfacePanel):
 class SurfaceQuadPanel(QuadPanel, SurfacePanel):
     
     def setSurfaceVelocity(self, adjacentPanels, Vfs):
+                
+        if len(adjacentPanels) == 4:
+            
+            areAllAdjacentPanelsQuad = True
+            for panel in adjacentPanels:
+                if not isinstance(panel, SurfaceQuadPanel):
+                    areAllAdjacentPanelsQuad = False
+                    break
+            
+            if areAllAdjacentPanelsQuad:
+                self.setVSAeroSurfaceVelocity(adjacentPanels, Vfs)
+            else:
+                return super().setSurfaceVelocity(adjacentPanels, Vfs)
+            
+        else:
+            return super().setSurfaceVelocity(adjacentPanels, Vfs)
+    
+    def setVSAeroSurfaceVelocity(self, adjacentPanels, Vfs):
         """
         QuadPanels are a special case of Panels than can be used for
         structured surface meshes.
@@ -1068,23 +1086,30 @@ class SurfaceQuadPanel(QuadPanel, SurfacePanel):
         μ = φ - φ_i = φ - φ_infty => nabla μ = nabla (φ - φ_infty) = V - V_infty
         nabla μ = v + V_infty - V_infty => nabla μ = v
         """
-                    
+       
+        e_T = self.T/self.T.norm() 
+        errorBound = 10**(-3) * self.charLength 
+                  
         for j in range(len(adjacentPanels)):
             
             r_kj = adjacentPanels[j].r_centroid - self.r_centroid
         
-            if abs(self.T.dot(r_kj)) > abs(self.e_m.dot(r_kj)):
+            if abs(e_T.dot(r_kj)) > abs(self.e_m.dot(r_kj)):
                 
-                if self.T.dot(r_kj) > 0:
+                if e_T.dot(r_kj) > 0:
                     
-                    if r_kj.norm() <= self.SMP + adjacentPanels[j].SMP:
-                        N2 = adjacentPanels[j]
+                    if r_kj.norm() <= (
+                            self.SMP + adjacentPanels[j].SMP + errorBound
+                        ):
+                        N2 = adjacentPanels[j]    
                     else:
                         N4 = adjacentPanels[j]
                         
                 else:
                     
-                    if r_kj.norm() <= self.SMP + adjacentPanels[j].SMP:
+                    if r_kj.norm() <= (
+                        self.SMP + adjacentPanels[j].SMP + errorBound
+                    ):
                         N4 = adjacentPanels[j]
                     else:
                         N2 = adjacentPanels[j]   
@@ -1093,14 +1118,18 @@ class SurfaceQuadPanel(QuadPanel, SurfacePanel):
                 
                 if self.e_m.dot(r_kj) > 0:
                     
-                    if r_kj.norm() <= self.SMQ + adjacentPanels[j].SMQ:
+                    if r_kj.norm() <= (
+                        self.SMQ + adjacentPanels[j].SMQ + errorBound
+                    ):
                         N3 = adjacentPanels[j]
                     else:
                         N1 = adjacentPanels[j]
                         
                 else:
                     
-                    if r_kj.norm() <= self.SMQ + adjacentPanels[j].SMQ:
+                    if r_kj.norm() <= (
+                        self.SMQ + adjacentPanels[j].SMQ + errorBound
+                    ):
                         N1 = adjacentPanels[j]
                     else:
                         N3 = adjacentPanels[j]
@@ -1116,7 +1145,7 @@ class SurfaceQuadPanel(QuadPanel, SurfacePanel):
         ):
            second_order_central_finite_difference_scheme = True  
         else:
-            if self.e_m.dot(N3.r_centroid - self.r_centroid):
+            if self.e_m.dot(N3.r_centroid - self.r_centroid) > 0:
                 second_order_forward_finite_difference_scheme = True
             else:
                 second_order_backward_finite_difference_scheme = True
