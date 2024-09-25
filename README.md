@@ -398,7 +398,7 @@ A_{ij} \mu_j = - B_{ij} \sigma_j , \qquad A_{ij} =
 ```math
 0 \le i < N_s  \qquad 0 \le j < N_s  \qquad 0 \le k < NWP_j  
 ```
-where $`NWP_j`$ is the number of panels that the wake row shedding from the $`j`$-th panel consists of, and f_j(k) returns the id of the $`k`$-th panel of the wake row shedding from $`j`$-th panel
+where $`NWP_j`$ is the number of panels that the wake row shedding from the $`j`$-th panel consists of, and $` f_j(k) `$ returns the id of the $`k`$-th panel of the wake row shedding from $`j`$-th panel
 
 ### Features
  1. Calculation of Non-Lifting Potential Flow about 3D arbitrarily-shaped rigid bodies
