@@ -257,6 +257,7 @@ class BoundaryElementMethod:
 
 
 class PanelMethod(BoundaryElementMethod):
+    
     def __init__(self, rigidBody: RigidAerodynamicBody) -> None:
         super().__init__(rigidBody)
         
@@ -413,28 +414,7 @@ class PanelMethod(BoundaryElementMethod):
         self, angleOfAttack: float, sideSlipAngle: float, magnitude: float
     ):
         super().setVfs(angleOfAttack, sideSlipAngle, magnitude)
-        
-        if self.rigidBody.isWakeFree:
-            
-            self.rigidBody.wake.setWakeLinesRefFrameOrientation(
-                np.identity(3)
-            )
-            
-            self.rigidBody.wake.setWakeLinesRefFrameOrigin(
-                trailingEdgeVertex=np.array(
-                    [
-                        self.rigidBody.getVertex(
-                            vertex_id, bodyFixedFrame=False
-                        )
-                        for vertex_id in self.rigidBody.trailingEdge
-                    ]
-                )
-            )
-            
-        else:
-            
-            self.wake.setWakeLinesRefFrameOrientation(self.rigidBody.A.T)
-        
+                
         self.rigidBody.wake.Vinf = self.Vinf
     
     def setVinf(
