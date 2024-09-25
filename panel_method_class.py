@@ -228,7 +228,7 @@ class BoundaryElementMethod:
         self, elevation=30, azimuth=-60, bodyFixedFrame=False
     ):
         ax, fig = self.rigidBody.plot(elevation, azimuth, bodyFixedFrame)
-        Cp = [panel.Cp for panel in bem.surfacePanel]
+        Cp = [panel.Cp for panel in self.surfacePanel]
         CpMin, CpMax = min(Cp), max(Cp)
         NormCp = [(float(Cp_i)-CpMin)/(CpMax-CpMin) for Cp_i in Cp]
         facecolor = plt.cm.coolwarm(NormCp)
@@ -348,7 +348,7 @@ class PanelMethod(BoundaryElementMethod):
                     Aij[i][upperSheddingFaceIndex] -= \
                         self.Cij[i][index(wakeRowIndex=j, wakefaceIndex=0)]
         
-        pass                  
+        return Aij                 
     
     @property
     def RHS(self):
@@ -417,7 +417,7 @@ class PanelMethod(BoundaryElementMethod):
         if self.rigidBody.isWakeFree:
             
             self.rigidBody.wake.setWakeLinesRefFrameOrientation(
-                theta_x=0, theta_y=0, theta_z=0
+                np.identity(3)
             )
             
             self.rigidBody.wake.setWakeLinesRefFrameOrigin(
@@ -426,32 +426,49 @@ class PanelMethod(BoundaryElementMethod):
                         self.rigidBody.getVertex(
                             vertex_id, bodyFixedFrame=False
                         )
-                        for vertex_id in self.trailingEdge
+                        for vertex_id in self.rigidBody.trailingEdge
                     ]
                 )
             )
             
         else:
             
-            self.wake.setWakeLinesRefFrameOrientationMatrix(self.rigidBody.A.T)
+            self.wake.setWakeLinesRefFrameOrientation(self.rigidBody.A.T)
         
         self.rigidBody.wake.Vinf = self.Vinf
     
-    def setVinf(self, angleOfAttack: float, sideSlipAngle: float, magnitude: float):
-        self.rigidBody.set_BodyFixedFrame_orientation(0, 0, 0)
-        self.rigidBody.set_BodyFixedFrame_angular_velocity(0, 0, 0)
-        self.rigidBody.set_BodyFixedFrame_origin_velocity(0, 0, 0)
+    def setVinf(
+        self, angleOfAttack: float, sideSlipAngle: float, magnitude: float
+    ):
         
+        super().setVinf(angleOfAttack, sideSlipAngle, magnitude)
+        
+        self.rigidBody.wake.Vinf = self.Vinf
+        
+        e_1 = self.Vinf/self.Vinf.norm()
+        if e_1.x != 0:
+            e_2 = Vector(0, 1, 0).cross(e_1)
+            
+        elif e_1.y != 0:
+            e_2 = Vector(0, 0, 1).cross(e_1)
+            
+        elif e_1.z != 0:
+            e_2 = Vector(1, 0, 0).cross(e_1)
+            
+        e_3 = e_2.cross(e_1)
+        
+        e_x, e_y, e_z = Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)
         self.rigidBody.wake.setWakeLinesRefFrameOrientation(
-            theta_x=0, theta_y=-angleOfAttack, theta_z=-sideSlipAngle
-        )
+            np.array(
+                [
+                    [e_x.dot(e_1), e_y.dot(e_1), e_z.dot(e_1)],
+                    [e_x.dot(e_2), e_y.dot(e_2), e_z.dot(e_2)],
+                    [e_x.dot(e_3), e_y.dot(e_3), e_z.dot(e_3)]
+                ]
+            )
+        )        
+        pass
         
-        self.Vinf = magnitude * Vector(1, 0, 0).changeBasis(
-            self.rigidBody.wake.wakeLine[0].A.T
-        )
-        
-        self.rigidBody.wake.Vinf = self.Vinf
-    
     def inducedVelocity(self, r_p: Vector) -> Vector:
         
         surfaceInducedVelocity = super().inducedVelocity(r_p)      
