@@ -98,6 +98,180 @@ class Mesh:
         
         pass
     
+    def setVSAeroAdjacencyMatrix(
+        self, numOfChordWiseFaces:int, numOfSpanWiseFaces:int
+    ):
+        numOfChordWiseFaces = 2 * numOfChordWiseFaces
+        numOfSpanWiseFaces = 2 * numOfSpanWiseFaces
+                
+        self.adjacencyMatrix = np.zeros((self.numOfFaces, self.numOfFaces))
+        
+        leftTipStartingIndex = numOfChordWiseFaces*numOfSpanWiseFaces
+        rightTipStartingIndex = leftTipStartingIndex + (self.numOfFaces - leftTipStartingIndex)//2
+        
+        # left wing tip
+        for face_i_id in range(leftTipStartingIndex, rightTipStartingIndex):
+            for face_j_id in range(leftTipStartingIndex, rightTipStartingIndex):
+                if (
+                    face_i_id != face_j_id 
+                    and self.doIntersect(
+                        self.getFace(face_i_id), self.getFace(face_j_id)
+                    )
+                ):
+                    self.adjacencyMatrix[face_i_id][face_j_id] = 1
+
+        # right wingtip
+        for face_i_id in range(rightTipStartingIndex, self.numOfFaces):
+            for face_j_id in range(rightTipStartingIndex, self.numOfFaces):
+                if (
+                    face_i_id != face_j_id 
+                    and self.doIntersect(
+                        self.getFace(face_i_id), self.getFace(face_j_id)
+                    )
+                ):
+                    self.adjacencyMatrix[face_i_id][face_j_id] = 1
+        
+        
+        def faceId(chordWiseIndex, spanWiseIndex):
+            return spanWiseIndex + chordWiseIndex*numOfSpanWiseFaces
+        
+        
+        for i in range(1, numOfChordWiseFaces-1):
+            for j in range(1, numOfSpanWiseFaces-1):
+                
+                id = faceId(chordWiseIndex=i, spanWiseIndex=j)
+                
+                self.adjacencyMatrix[id][
+                    faceId(chordWiseIndex=i+1, spanWiseIndex=j)
+                ] = 1
+                
+                self.adjacencyMatrix[id][
+                    faceId(chordWiseIndex=i-1, spanWiseIndex=j)
+                ] = 1
+                
+                self.adjacencyMatrix[id][
+                    faceId(chordWiseIndex=i, spanWiseIndex=j+1)
+                ] = 1
+                
+                self.adjacencyMatrix[id][
+                    faceId(chordWiseIndex=i, spanWiseIndex=j-1)
+                ] = 1
+        
+        for i in range(1, numOfChordWiseFaces-1):
+            
+            j = 0
+            
+            id = faceId(chordWiseIndex=i, spanWiseIndex=j)
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i+1, spanWiseIndex=j)
+            ] = 1
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i-1, spanWiseIndex=j)
+            ] = 1
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i, spanWiseIndex=j+1)
+            ] = 1
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i, spanWiseIndex=j+2)
+            ] = 1   
+            
+            
+            j=numOfSpanWiseFaces-1
+            
+            id = faceId(chordWiseIndex=i, spanWiseIndex=j)
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i+1, spanWiseIndex=j)
+            ] = 1
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i-1, spanWiseIndex=j)
+            ] = 1
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i, spanWiseIndex=j-1)
+            ] = 1
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i, spanWiseIndex=j-2)
+            ] = 1
+            
+        for j in range(1, numOfSpanWiseFaces-1):
+            
+            i=0
+            
+            id = faceId(chordWiseIndex=i, spanWiseIndex=j)
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i, spanWiseIndex=j+1)
+            ] = 1
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i, spanWiseIndex=j-1)
+            ] = 1
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i+1, spanWiseIndex=j)
+            ] = 1
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i+2, spanWiseIndex=j)
+            ] = 1
+            
+            i=numOfChordWiseFaces-1
+            
+            id = faceId(chordWiseIndex=i, spanWiseIndex=j)
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i, spanWiseIndex=j+1)
+            ] = 1
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i, spanWiseIndex=j-1)
+            ] = 1
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i-1, spanWiseIndex=j)
+            ] = 1
+            
+            self.adjacencyMatrix[id][
+                faceId(chordWiseIndex=i-2, spanWiseIndex=j)
+            ] = 1
+                
+        i, j = 0, 0
+        id = faceId(chordWiseIndex=i, spanWiseIndex=j)
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i+1, spanWiseIndex=j)]=1
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i+2, spanWiseIndex=j)]=1
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i, spanWiseIndex=j+1)]=1
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i, spanWiseIndex=j+2)]=1
+        
+        i, j = numOfChordWiseFaces-1, 0
+        id = faceId(chordWiseIndex=i, spanWiseIndex=j)
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i-1, spanWiseIndex=j)]=1
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i-2, spanWiseIndex=j)]=1
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i, spanWiseIndex=j+1)]=1
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i, spanWiseIndex=j+2)]=1
+        
+        i, j = 0, numOfSpanWiseFaces-1
+        id = faceId(chordWiseIndex=i, spanWiseIndex=j)
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i+1, spanWiseIndex=j)]=1
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i+2, spanWiseIndex=j)]=1
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i, spanWiseIndex=j-1)]=1
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i, spanWiseIndex=j-2)]=1
+        
+        i, j = numOfChordWiseFaces -1, numOfSpanWiseFaces-1
+        id = faceId(chordWiseIndex=i, spanWiseIndex=j)
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i-1, spanWiseIndex=j)]=1
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i-2, spanWiseIndex=j)]=1
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i, spanWiseIndex=j-1)]=1
+        self.adjacencyMatrix[id][faceId(chordWiseIndex=i, spanWiseIndex=j-2)]=1
+        
+        pass
+        
     def getFacesAdjacentFaces(self, faceIndex):
         return [
             index for index in range(self.numOfFaces)
