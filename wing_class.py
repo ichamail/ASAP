@@ -81,9 +81,9 @@ class Wing:
         # z-axis: from top to bottom
                 
         x_root = self.root_airfoil.coords[:-1, 0]/self.root_airfoil.chord
-        z_root = - self.root_airfoil.coords[:-1, 1]/self.root_airfoil.chord
+        z_root = self.root_airfoil.coords[:-1, 1]/self.root_airfoil.chord
         x_tip = self.tip_airfoil.coords[:-1, 0]/self.tip_airfoil.chord
-        z_tip = - self.tip_airfoil.coords[:-1, 1]/self.tip_airfoil.chord
+        z_tip = self.tip_airfoil.coords[:-1, 1]/self.tip_airfoil.chord
                                 
         span_percentage = np.array(
             [
@@ -184,9 +184,9 @@ class Wing:
                         
                         addFace(
                             node_id(i, j),
-                            node_id(i+1, j),
+                            node_id(i, j+1),
                             node_id(i+1, j+1),
-                            node_id(i, j+1)
+                            node_id(i+1, j)
                         )
                                 
             elif faceType=="triangular":
@@ -203,39 +203,39 @@ class Wing:
                             if j < j_max//2:
                                 addFace(    
                                     node_id(i, j),
-                                    node_id(i+1, j),
+                                    node_id(i, j+1),
                                     node_id(i+1, j+1),
-                                    node_id(i, j+1)
+                                    node_id(i+1, j)
                                 )
                             
                             # left side    
                             else:
                                 addFace(    
                                     node_id(i+1, j),
-                                    node_id(i+1, j+1),
+                                    node_id(i, j),
                                     node_id(i, j+1),
-                                    node_id(i, j)
+                                    node_id(i+1, j+1)
                                 )
 
-                        # suction side
+                        # pressure side
                         else:
                             
                             # right side
                             if j < j_max//2:
                                 addFace(    
                                     node_id(i+1, j),
-                                    node_id(i+1, j+1),
+                                    node_id(i, j),
                                     node_id(i, j+1),
-                                    node_id(i, j)
+                                    node_id(i+1, j+1)
                                 )
                             
                             # left side
                             else:
                                 addFace(    
                                     node_id(i, j),
-                                    node_id(i+1, j),
+                                    node_id(i, j+1),
                                     node_id(i+1, j+1),
-                                    node_id(i, j+1)
+                                    node_id(i+1, j)
                                 )
         
         
@@ -244,8 +244,8 @@ class Wing:
             id = len(node) -1 # last node id
             
             for j in [0, j_max]:
-                # j=0 root or right tip
-                # j-j_max tip or left tip
+                # j=0 root or left tip
+                # j-j_max tip or right tip
                 
                 if j==0:
                     addWingTipFace = addFace
@@ -256,7 +256,7 @@ class Wing:
                         node_ids.rotate(-1)
                         return addFace(*node_ids, reverse_order=True)
                 
-                # root or right tip   
+                # root or left tip   
                 id = id + 1
                    
                 # trailing edge   
@@ -275,14 +275,15 @@ class Wing:
                 
                 addWingTipFace(
                     node_id(i, j),
-                    id,
                     node_id(i+1, j),
+                    id
                 )
                 
                 addWingTipFace(
                     node_id(i, j),
-                    node_id(i_max - i - 1, j),
-                    id
+                    id,
+                    node_id(i_max - i - 1, j)
+                    
                 )
                 
                 for i in range(1, i_max//2 - 1):
@@ -301,30 +302,30 @@ class Wing:
                                 
                     addWingTipFace(
                         node_id(i, j),
-                        id-1,
+                        node_id(i+1, j),
                         id,
-                        node_id(i+1, j)   
+                        id-1
                     )
                     
                     addWingTipFace(
                         id-1,
-                        node_id(i_max-i, j),
+                        id,
                         node_id(i_max - i - 1, j),
-                        id    
+                        node_id(i_max-i, j)
                     )
                     
                 # leading edge
                 i = i+1           
                 addWingTipFace(
                     node_id(i, j),
-                    id,
-                    node_id(i+1, j)
+                    node_id(i+1, j),
+                    id
                 )
                 
                 addWingTipFace(
                     id,
-                    node_id(i+2, j),  # node_id(i_max - i, j),
-                    node_id(i+1, j),  # node_id(i_max - i - 1, j)     
+                    node_id(i+1, j),  # node_id(i_max - i - 1, j),
+                    node_id(i+2, j)  # node_id(i_max - i, j) 
                 )
           
         return node, np.array(face)
