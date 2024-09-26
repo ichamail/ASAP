@@ -644,6 +644,7 @@ class Source(Panel):
 class Doublet(Panel):
     
     farFieldFactor:float = 10
+    vortexCoreRadius:float = 10**(-6)
     
     def __init__(self, vertices: np.ndarray, CCW: bool = True):
         super().__init__(vertices, CCW)
@@ -862,7 +863,10 @@ class Doublet(Panel):
                     * (d_ap*d_bp + r_ap.x * r_bp.x + r_ap.y * r_bp.y + r_p.z**2)
                 )
                 
-                if denominator != 0:
+                # if denominator != 0:
+                epsilon = self.vortexCoreRadius * self.charLength
+                if not ( - epsilon < denominator < epsilon ):
+                    
                     term = (d_ap + d_bp)/denominator
                     
                     v_x +=  - r_p.z * r_ab.y * term
