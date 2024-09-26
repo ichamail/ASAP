@@ -89,7 +89,10 @@ class WakeLine:
         self.vertex[vertexIndex][1] = self.vertex[vertexIndex][1] + dr.y
         self.vertex[vertexIndex][2] = self.vertex[vertexIndex][2] + dr.z
     
-
+    def changeVertexPosition(self, vertexIndex:int, r:Vector):
+        r = (r - self.ro).changeBasis(self.A)
+        self.vertex[vertexIndex] = r.x, r.y, r.z
+        
 class WakeRow:
     
     def __init__(self, wakeLines:list[WakeLine], faceType:str="Quads") -> None:
