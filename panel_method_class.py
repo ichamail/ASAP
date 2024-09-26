@@ -521,12 +521,6 @@ class PanelMethod(BoundaryElementMethod):
                 )
                      
         pass       
-        
-    def solveIteratively(self, iters:int = 10):
-        pass
-    
-    def solveUnsteady(self, dt:float, iters:int):
-        pass
     
     def solve(self, steadyState=True, iters=0):
         
@@ -560,7 +554,184 @@ class PanelMethod(BoundaryElementMethod):
             dt = length/V 
                     
             self.solveUnsteady(dt, iters)
+            
+        pass
        
+    def solveIteratively(self, iters:int = 10):
+        
+        self.steadyState = True
+        
+        if self.rigidBody.isWakeFree:
+            iterWake = self.iterFreeWake
+        else:
+            iterWake = self.iterSufaceFixedWake
+        
+        self.advanceSolution()
+        
+        for i in range(iters):
+            
+            iterWake()
+            self.rigidBody.display(bodyFixedFrame=True)
+            self.solveLinearSystem()
+        
+        self.computeSurfaceVelocity()
+        self.computeSurfacePressure()
+        
+        pass
+            
+    def iterSufaceFixedWake(self):
+        
+        for i in range(self.rigidBody.wake.numOfWakeLines):
+            
+            ds = np.array(
+                [
+                    (
+                        self.rigidBody.wake.wakeLine[i].getVertexPositionVector(j+1)
+                        - self.rigidBody.wake.wakeLine[i].getVertexPositionVector(j)
+                    ).norm()
+                    for j in range(
+                        self.rigidBody.wake.numOfVerticesPerWakeLine-1
+                    )
+                ]
+            )
+                                    
+            for j in range(self.rigidBody.wake.numOfVerticesPerWakeLine-1):
+                
+                Vs = (
+                    self.velocity(
+                        r_p=self.rigidBody.wake.wakeLine[i].getVertexPositionVector(j)
+                    )
+                    +
+                    self.velocity(
+                        r_p=self.rigidBody.wake.wakeLine[i].getVertexPositionVector(j+1)
+                    )
+                )/2
+                
+                e_s = Vs/Vs.norm()
+                dr = ds[j] * e_s
+                
+                self.rigidBody.wake.wakeLine[i].changeVertexPosition(
+                    vertexIndex=j+1,
+                    r=self.rigidBody.wake.wakeLine[i].getVertexPositionVector(j)+dr
+                )
+                
+        self.rigidBody.wake.updatePanelsPosition()
+        
+        pass
+    
+    def iterFreeWake(self):
+        
+        for i in range(self.rigidBody.wake.numOfWakeLines):
+            
+            ds = np.array(
+                [
+                    (
+                        self.rigidBody.wake.wakeLine[i].getVertexPositionVector(j+1)
+                        - self.rigidBody.wake.wakeLine[i].getVertexPositionVector(j)
+                    ).norm()
+                    for j in range(
+                        self.rigidBody.wake.numOfVerticesPerWakeLine-1
+                    )
+                ] 
+            )
+            
+                                
+            for j in range(self.rigidBody.wake.numOfVerticesPerWakeLine-1):
+                
+                Vs = (
+                        (
+                            self.velocity(
+                                r_p=(
+                                    self.rigidBody.wake.wakeLine[i].getVertexPositionVector(j)
+                                    - self.rigidBody.ro
+                                ).changeBasis(self.rigidBody.A)
+                            )
+                            +
+                            self.velocity(
+                                r_p=(
+                                    self.rigidBody.wake.wakeLine[i].getVertexPositionVector(j+1)
+                                    - self.rigidBody.ro
+                                ).changeBasis(self.rigidBody.A)
+                            )
+                        )/2
+                ).changeBasis(self.rigidBody.A.T)
+                
+                e_s = Vs/Vs.norm()
+                dr = ds[j] * e_s
+                
+                self.rigidBody.wake.wakeLine[i].changeVertexPosition(
+                    vertexIndex=j+1,
+                    r=self.rigidBody.wake.wakeLine[i].getVertexPositionVector(j)+dr
+                )
+                
+        self.rigidBody.wake.updatePanelsPosition()
+        
+        pass
+    
+    def solveUnsteady(self, dt:float, iters:int):
+        
+        self.steadyState = False
+        
+        if self.rigidBody.isWakeFree:
+            rollWake = self.rollFreeWake
+        else:
+            rollWake = self.rollSurfaceFixedWake
+        
+        for i in range(iters):
+            
+            self.rigidBody.move_BodyFixedFrame(dt)
+            
+            self.rigidBody.display()
+            
+            self.advanceSolution()
+            
+            rollWake(dt)
+            
+            self.rigidBody.display()
+        
+        self.computeSurfaceVelocity()
+        self.computeSurfacePressure()
+            
+        
+        pass
+    
+    def rollSurfaceFixedWake(self, dt:float):
+        
+        for i in range(self.rigidBody.wake.numOfWakeLines):
+            
+            for j in range(1, self.rigidBody.wake.numOfVerticesPerWakeLine):
+                                
+                self.rigidBody.wake.wakeLine[i].moveVertex(
+                    vertexIndex=j,
+                    dr = dt * self.inducedVelocity(
+                        r_p=self.rigidBody.wake.wakeLine[i].getVertexPositionVector(j)
+                    )
+                )
+        
+        self.rigidBody.wake.updatePanelsPosition()
+        
+        pass
+    
+    def rollFreeWake(self, dt:float):
+        
+        for i in range(self.rigidBody.wake.numOfWakeLines):
+            
+            for j in range(1, self.rigidBody.wake.numOfVerticesPerWakeLine):
+                
+                self.rigidBody.wake.wakeLine[i].moveVertex(
+                    vertexIndex=j,
+                    dr = dt * self.inducedVelocity(
+                        r_p=(
+                            self.rigidBody.wake.wakeLine[i].getVertexPositionVector(j)
+                            - self.rigidBody.ro
+                        ).changeBasis(self.rigidBody.A)
+                    ).changeBasis(self.rigidBody.A.T)
+                )
+        
+        self.rigidBody.wake.updatePanelsPosition()
+        
+        pass
+        
         
         
 if __name__=="__main__":
