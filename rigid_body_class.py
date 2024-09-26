@@ -614,11 +614,15 @@ class RigidAerodynamicBody(RigidBody):
                 # )
                 
                 # faster - less vector operations
-                r = Vector(
-                    *self.getWakeVertex(
-                        wakeLineIndex, vertexIndex, bodyFixedFrame=True
-                    )
+                # r = Vector(
+                #     *self.getWakeVertex(
+                #         wakeLineIndex, vertexIndex, bodyFixedFrame=True
+                #     )
+                # )
+                r = self.wake.wakeLine[wakeLineIndex].getVertexPositionVector(
+                    vertexIndex
                 )
+                
                 V =  self.wake.Vinf - (
                     self.Vo + self.omega.cross(r.changeBasis(self.A.T)) 
                 )
