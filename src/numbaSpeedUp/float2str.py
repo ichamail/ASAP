@@ -1,12 +1,7 @@
 import numpy as np
-import numba
-from numba import types, jit,njit
-from numba import deferred_type, optional
-from numba import void,b1,u1,u2,u4,u8,i1,i2,i4,i8,f4,f8,c8,c16
-from numba.typed import List, Dict
-from numba.types import ListType, unicode_type, UnicodeType
-from numba.cpython.unicode import _empty_string, _set_code_point, _get_code_point, PY_UNICODE_1BYTE_KIND
-from numba.extending import overload, overload_method
+from numba import types, njit
+from numba.cpython.unicode import _empty_string, _set_code_point, PY_UNICODE_1BYTE_KIND
+from numba.extending import overload_method
 
 DIGITS_START = 48
 DIGITS_END = 58
@@ -118,7 +113,3 @@ def overload_float_to_str(x):
         return float_to_str(x)
     return impl
 
-@njit
-def test(x):
-    s = "This is the number: " + str(x)
-    return s

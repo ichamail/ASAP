@@ -2,6 +2,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from src.myMath import Vector
 from src.utilities import set_axes_equal, is_inside_polygon, LeastSquares
+from src.numbaSpeedUp import src_unitStrength_inducedVelocityPotential, src_inducedVelocity, dblt_inducedVelocity, dblt_unitStrength_inducedVelocityPotential, giveArguments_for_dblt_inducedVelocity, giveArguments_for_src_inducedVelocity, giveArguments_for_unitStrength_inducedVelocityPotential
+
         
 class Panel:
     
@@ -394,6 +396,12 @@ class Source(Panel):
 
         return  - 1/(4 * np.pi) * phi
 
+    def unitStrength_inducedVelocityPotential(self, r_p:Vector) -> float:
+                
+        return src_unitStrength_inducedVelocityPotential(
+            *giveArguments_for_unitStrength_inducedVelocityPotential(r_p, self)
+        )
+    
     def inducedVelocityPotential(self, r_p:Vector) -> float:
         return self.sigma * self.unitStrength_inducedVelocityPotential(r_p)
 
@@ -634,6 +642,10 @@ class Source(Panel):
             
         return self.sigma/(4 * np.pi) * v_p.changeBasis(self.A.T)
 
+    def inducedVelocity(self, r_p:Vector) -> Vector:
+        return src_inducedVelocity(
+            *giveArguments_for_src_inducedVelocity(r_p, self)
+        )
        
 class Doublet(Panel):
     
@@ -825,6 +837,11 @@ class Doublet(Panel):
         
         return  1/(4*np.pi) * phi
     
+    def unitStrength_inducedVelocityPotential(self, r_p:Vector) -> float:
+        return dblt_unitStrength_inducedVelocityPotential(
+            *giveArguments_for_unitStrength_inducedVelocityPotential(r_p, self)
+        )
+    
     def inducedVelocityPotential(self, r_p:Vector) -> float:
         return self.mu * self.unitStrength_inducedVelocityPotential(r_p)
 
@@ -876,6 +893,10 @@ class Doublet(Panel):
         
         return - self.mu/(4 * np.pi) * v_p.changeBasis(self.A.T)
 
+    def inducedVelocity(self, r_p:Vector) -> Vector:
+        return dblt_inducedVelocity(
+            *giveArguments_for_dblt_inducedVelocity(r_p, self)
+        )
 
 class SurfacePanel(Source, Doublet):
     

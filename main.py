@@ -1,12 +1,18 @@
 from tests.test_geometry import *
 from tests.test_PanelMethod import *
 from tests.test_myMath import *
+from tests.test_numbaSpeedUp import *
 
 def main():
     
     ####################### Test myMath Package ##########################
     
     # test_Vector()
+    
+    ###################### Test numbaSpeedUp Package #######################
+    
+    # print_numba_float(1.2)
+    # test_numbaPanel()
     
     ####################### Test geometry Package ##########################
     

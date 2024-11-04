@@ -1,4 +1,5 @@
 from src.myMath import Vector
+import numpy as np
 
 def test_Vector():
     
