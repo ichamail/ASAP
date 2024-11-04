@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt, cm
 from .rigid_body_class import RigidBody, RigidAerodynamicBody
-from ..myMath import Vector
+from src.myMath import Vector
 
 
 class BoundaryElementMethod:

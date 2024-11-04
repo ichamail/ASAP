@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import beta
 from numpy.linalg import inv
-from ..myMath import Vector
+from src.myMath import Vector
 
 
 def LeastSquares(A, b):

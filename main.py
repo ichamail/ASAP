@@ -1,7 +1,12 @@
 from tests.test_geometry import *
 from tests.test_PanelMethod import *
+from tests.test_myMath import *
 
 def main():
+    
+    ####################### Test myMath Package ##########################
+    
+    test_Vector()
     
     ####################### Test geometry Package ##########################
     
@@ -30,7 +35,7 @@ def main():
     # test_rigidAerodynamicBodyWakeMotion()
     # test_rigidAerodynamicBodyWakeMotion2()
     
-    testBoundaryElementMethod()
+    # testBoundaryElementMethod()
     # test_PanelMethod_SteadyState_rigidWake()
     # test_PanelMethod_SteadyState_iterativeWake()
     # test_PanelMethod_Unsteady()

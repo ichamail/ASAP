@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from ..myMath import Vector
-from ..utilities import set_axes_equal, is_inside_polygon, LeastSquares
+from src.myMath import Vector
+from src.utilities import set_axes_equal, is_inside_polygon, LeastSquares
         
 class Panel:
     

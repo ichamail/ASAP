@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 from matplotlib.colors import LightSource as LightSource
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import stl
-from ..utilities import set_axes_equal
+from src.utilities import set_axes_equal
 from .panel_class import SurfaceQuadPanel, SurfaceTriPanel
 
 

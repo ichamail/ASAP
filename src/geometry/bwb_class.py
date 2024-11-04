@@ -1,8 +1,8 @@
 import numpy as np
 import csv
-from ..geometry import Airfoil
-from ..myMath import Vector
-from ..utilities import DenserAtBoundaries, cosspace, interpolation
+from .airfoil_class import Airfoil
+from src.myMath import Vector
+from src.utilities import DenserAtBoundaries, cosspace, interpolation
 
 
 class WingCrossSection:

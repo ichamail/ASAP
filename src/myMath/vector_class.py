@@ -1,6 +1,10 @@
 import numpy as np
+from numba.experimental import jitclass
+from numba import float64
 
+spec = [('x', float64), ('y', float64), ('z', float64)]
 
+@jitclass(spec)
 class Vector:
     
     def __init__(self, x, y, z):
@@ -9,8 +13,16 @@ class Vector:
         self.z = z
     
     def __str__(self):
+        
         """Human-readable string representation of the vector."""
-        return '({:g})ex + ({:g})ey + ({:g})ez'.format(self.x, self.y, self.z)
+        # return '({:g})ex + ({:g})ey + ({:g})ez'.format(self.x, self.y, self.z)
+        
+        # using numba and overloaded str() from ulilities
+        string = "(" + str(round(self.x, 4)) + ")ex + ("
+        string += str(round(self.y, 4)) + ")ey + ("
+        string += str(round(self.z, 4)) + ")ez"
+        
+        return string
     
     def norm(self):
         return np.sqrt(self.x**2 + self.y**2 + self.z**2)
@@ -25,32 +37,44 @@ class Vector:
         
         return tranformedVector
     
-    @classmethod
-    def addition(cls, vec1, vec2):
-        return Vector(vec1.x + vec2.x, vec1.y + vec2.y, vec1.z + vec2.z)
+    # @classmethod  # class methods are not yet supported in numba
+    # def addition(cls, vec1, vec2):
+    #     return Vector(vec1.x + vec2.x, vec1.y + vec2.y, vec1.z + vec2.z)
     
-    @classmethod
-    def dot_product(cls, vec1, vec2):
-        return vec1.x*vec2.x + vec1.y*vec2.y + vec1.z*vec2.z
+    # @classmethod  # class methods are not yet supported in numba
+    # def dot_product(cls, vec1, vec2):
+    #     return vec1.x*vec2.x + vec1.y*vec2.y + vec1.z*vec2.z
     
-    @classmethod
-    def cross_product(cls, vec1, vec2):
+    # @classmethod  # class methods are not yet supported in numba
+    # def cross_product(cls, vec1, vec2):
         
-        crossProductVector = Vector(
-            vec1.y*vec2.z - vec1.z*vec2.y,
-            - (vec1.x*vec2.z - vec1.z*vec2.x),
-            vec1.x*vec2.y - vec1.y*vec2.x  
-        )
+    #     crossProductVector = Vector(
+    #         vec1.y*vec2.z - vec1.z*vec2.y,
+    #         - (vec1.x*vec2.z - vec1.z*vec2.x),
+    #         vec1.x*vec2.y - vec1.y*vec2.x  
+    #     )
         
-        return crossProductVector
+    #     return crossProductVector
     
     def __add__(self, vector):
         
         return Vector(self.x + vector.x, self.y + vector.y, self.z + vector.z)
-       
+    
+    def __iadd__(self, vector):
+        self.x += vector.x
+        self.y += vector.y
+        self.z += vector.z
+        return self
+    
     def __sub__(self, vector):
         
         return Vector(self.x - vector.x, self.y - vector.y, self.z - vector.z)
+    
+    def __isub__(self, vector):
+        self.x -= vector.x
+        self.y -= vector.y
+        self.z -= vector.z
+        return self
     
     def __mul__(self, scalar):
         

@@ -3,7 +3,7 @@ import numpy as np
 from scipy import interpolate
 from scipy.stats import beta
 import sys
-from ..utilities import is_inside_polygon
+from src.utilities import is_inside_polygon
 
 
 class Polygon:

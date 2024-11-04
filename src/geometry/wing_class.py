@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import beta
-from ..myMath import Vector
-from ..geometry import Airfoil
+from src.myMath import Vector
+from .airfoil_class import Airfoil
 from collections import deque
 
 

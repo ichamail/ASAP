@@ -2,8 +2,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.colors import LightSource as LightSource
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from ..utilities import set_axes_equal
-from ..myMath import Vector
+from src.utilities import set_axes_equal
+from src.myMath import Vector
 from .mesh_class import Mesh, PanelMesh
 from .wake_class import Wake, PanelWake
 
