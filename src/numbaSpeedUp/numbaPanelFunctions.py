@@ -1,5 +1,4 @@
 from numba import njit, typed
-from numba.experimental import jitclass
 import numpy as np
 from src.myMath import Vector
 
