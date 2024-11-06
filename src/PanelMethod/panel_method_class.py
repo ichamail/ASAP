@@ -2,6 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt, cm
 from .rigid_body_class import RigidBody, RigidAerodynamicBody
 from src.myMath import Vector
+from src.numbaSpeedUp import jit_computeSurfaceInfluence
 
 
 class BoundaryElementMethod:
@@ -99,8 +100,14 @@ class BoundaryElementMethod:
                         self.surface.panel[i].r_cp
                     )
                 )
+                if i == j:
+                    print("i=", i, ", j=", j, " : ", self.Bij[i][j],self.Cij[i][j])
         pass
     
+    def computeSurfaceInfluence(self):
+        return jit_computeSurfaceInfluence(self)
+    
+    # overwrite method with numba jit compilation
     def computeSourceStrengths(self):
         if self.rigidBody.omega.norm() != 0:
             for panel in self.surfacePanel:

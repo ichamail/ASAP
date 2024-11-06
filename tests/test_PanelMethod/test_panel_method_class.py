@@ -31,7 +31,7 @@ def testBoundaryElementMethod():
     
     bem.displaySurfacePressureCoefficientContour()
       
-def testPanelMethod(steadyState=True, iters=0):
+def testPanelMethod(steadyState=True, iters=0, numOfWakeFaces=1, wakeLength=10):
     numOfChordWiseFaces=5
     numOfSpanWiseFaces=5
 
@@ -75,11 +75,12 @@ def testPanelMethod(steadyState=True, iters=0):
 
     panelMethod.rigidBody.surface.setVSAeroAdjacencyMatrix(
         numOfChordWiseFaces, numOfSpanWiseFaces
-    )
-
+    )   
+    
+    
     panelMethod.setWake(
-        length=0,
-        numOfWakeFaces=0,
+        length=wakeLength,
+        numOfWakeFaces=numOfWakeFaces,
         faceType="Quads",
         isWakeFree=False
     )
@@ -88,7 +89,8 @@ def testPanelMethod(steadyState=True, iters=0):
     panelMethod.rigidBody.display(
         elevation=30,
         azimuth=-60,
-        bodyFixedFrame=True
+        bodyFixedFrame=True,
+        displayWake=True
     )
 
 
@@ -121,12 +123,12 @@ def testPanelMethod(steadyState=True, iters=0):
 
 def test_PanelMethod_SteadyState_rigidWake():
     
-    testPanelMethod(steadyState=True, iters=0)
+    testPanelMethod(steadyState=True, iters=0, numOfWakeFaces=1, wakeLength=5)
 
 def test_PanelMethod_SteadyState_iterativeWake():
     
-    testPanelMethod(steadyState=True, iters=5)
+    testPanelMethod(steadyState=True, iters=5, numOfWakeFaces=10, wakeLength=5)
     
 def test_PanelMethod_Unsteady():
     
-    testPanelMethod(steadyState=False, iters=5)
+    testPanelMethod(steadyState=False, iters=5, numOfWakeFaces=0, wakeLength=0)

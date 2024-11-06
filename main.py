@@ -5,14 +5,17 @@ from tests.test_numbaSpeedUp import *
 
 def main():
     
+    test()
+           
+    return 0
+ 
+
+def test():
+    
     ####################### Test myMath Package ##########################
     
     # test_Vector()
     
-    ###################### Test numbaSpeedUp Package #######################
-    
-    # print_numba_float(1.2)
-    # test_numbaPanel()
     
     ####################### Test geometry Package ##########################
     
@@ -42,7 +45,7 @@ def main():
     # test_rigidAerodynamicBodyWakeMotion2()
     
     testBoundaryElementMethod()
-    # test_PanelMethod_SteadyState_rigidWake()
+    test_PanelMethod_SteadyState_rigidWake()
     # test_PanelMethod_SteadyState_iterativeWake()
     # test_PanelMethod_Unsteady()
     
@@ -52,9 +55,16 @@ def main():
     
     # simulateBWB()
     
+    
+    ###################### Test numbaSpeedUp Package #######################
+    
+    # print_numba_float(1.2)
+    # test_numbaPanel()
+    # test_numbaPanelMethod()
+    
     pass
 
-
+   
 if __name__=="__main__":
     
     main()

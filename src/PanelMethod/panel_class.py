@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from src.myMath import Vector
 from src.utilities import set_axes_equal, is_inside_polygon, LeastSquares
-from src.numbaSpeedUp import src_unitStrength_inducedVelocityPotential, src_inducedVelocity, dblt_inducedVelocity, dblt_unitStrength_inducedVelocityPotential, giveArguments_for_dblt_inducedVelocity, giveArguments_for_src_inducedVelocity, giveArguments_for_unitStrength_inducedVelocityPotential
+from src.numbaSpeedUp import jit_src_unitStrength_inducedVelocityPotential, jit_dblt_unitStrength_inducedVelocityPotential, jit_src_dblt_unitStrength_inducedVelocityPotential, jit_src_inducedVelocity, jit_dblt_inducedVelocity
 
         
 class Panel:
@@ -396,11 +396,9 @@ class Source(Panel):
 
         return  - 1/(4 * np.pi) * phi
 
+    # overwrite method with numba jit compilation
     def unitStrength_inducedVelocityPotential(self, r_p:Vector) -> float:
-                
-        return src_unitStrength_inducedVelocityPotential(
-            *giveArguments_for_unitStrength_inducedVelocityPotential(r_p, self)
-        )
+        return jit_src_unitStrength_inducedVelocityPotential(self, r_p)
     
     def inducedVelocityPotential(self, r_p:Vector) -> float:
         return self.sigma * self.unitStrength_inducedVelocityPotential(r_p)
@@ -642,11 +640,11 @@ class Source(Panel):
             
         return self.sigma/(4 * np.pi) * v_p.changeBasis(self.A.T)
 
+    # overwrite method with numba jit compilation
     def inducedVelocity(self, r_p:Vector) -> Vector:
-        return src_inducedVelocity(
-            *giveArguments_for_src_inducedVelocity(r_p, self)
-        )
-       
+        return jit_src_inducedVelocity(self, r_p)
+
+
 class Doublet(Panel):
     
     farFieldFactor:float = 10
@@ -837,10 +835,9 @@ class Doublet(Panel):
         
         return  1/(4*np.pi) * phi
     
+    # overwrite method with numba jit compilation
     def unitStrength_inducedVelocityPotential(self, r_p:Vector) -> float:
-        return dblt_unitStrength_inducedVelocityPotential(
-            *giveArguments_for_unitStrength_inducedVelocityPotential(r_p, self)
-        )
+        return jit_dblt_unitStrength_inducedVelocityPotential(self, r_p)
     
     def inducedVelocityPotential(self, r_p:Vector) -> float:
         return self.mu * self.unitStrength_inducedVelocityPotential(r_p)
@@ -893,10 +890,10 @@ class Doublet(Panel):
         
         return - self.mu/(4 * np.pi) * v_p.changeBasis(self.A.T)
 
+    # overwrite method with numba jit compilation
     def inducedVelocity(self, r_p:Vector) -> Vector:
-        return dblt_inducedVelocity(
-            *giveArguments_for_dblt_inducedVelocity(r_p, self)
-        )
+        return jit_dblt_inducedVelocity(self, r_p)
+
 
 class SurfacePanel(Source, Doublet):
     
@@ -906,6 +903,10 @@ class SurfacePanel(Source, Doublet):
             Source.unitStrength_inducedVelocityPotential(self, r_p),
             Doublet.unitStrength_inducedVelocityPotential(self, r_p)
         )
+    
+    # overwrite method with numba jit compilation
+    def unitStrength_inducedVelocityPotential(self, r_p: Vector) -> float:
+        return jit_src_dblt_unitStrength_inducedVelocityPotential(self, r_p)
         
     def inducedVelocityPotential(self, r_p: Vector) -> float:
         
