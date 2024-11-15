@@ -411,3 +411,64 @@ where $`NWP_j`$ is the number of panels that the wake row shedding from the $`j`
       3. Unsteady simulations with a shedding wake model
 
 ## Simulation Results
+
+## Potential Flow around a Sphere
+![sphere triangular mesh](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/b09d13fc-d26f-4a8e-877e-110cef892e5c)
+
+![Cp_contour - 380 quads - 21 longitude X 20 latitude](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/28d6d5f9-f670-45c1-98f6-46e2a259f102)
+![Sphere - Cp plot - 380 panels](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/b40315a4-2b8d-4938-bcd8-8bd057f1f030)
+
+![Cp_contour - 870 quads - 31 longitude X 30 latitude](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/d0d5e622-30a9-4592-9701-4b424f854f39)
+![Sphere - Cp plot - 870 panels](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/525c9e0a-bac9-496e-870a-807aa5f3f2a9)
+
+
+![CP_contour - 80 trias](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/3c6f1d40-a7ef-4e07-a3ac-617cc6b4a9c9)
+![CP_contour - 320 trias](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/3f5c5f94-233e-4815-93d4-c61f0a64953e)
+![CP_contour - 1280 trias](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/89cb5c10-9e0e-4c57-94c4-431335b1089e)
+![CP_contour - 5120 trias](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/53a76898-85fc-4fd4-a673-c097cd3b0407)
+![Sphere Mesh Independence Study](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/b733c800-4efb-4034-b96c-f12742b8217f)
+
+
+
+
+## Potential Flow around a Low Aspect Ratio Rectangular Wing
+![wing mesh](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/62fb989a-a779-4c88-abb2-8f7a0b445720)
+
+
+## Steady Simulation with rigid wake
+![wing - AoA = 10 - flat wake](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/9c4a7bba-33be-42d0-a39f-ea13e6f5c498)
+![wing - AoA = 10 - flat wake - side view](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/bcd1bfe1-f810-40ad-a244-84578027d577)
+
+## Steady Simulation with iterative wake
+
+![AoA = 10, wake roll up](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/def6f2ba-ce59-4dcd-9c17-a579e1554383)
+![AoA = 10, wake roll up - side view](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/f45edfc2-2c63-4df0-a855-17e1def62acb)
+![wing - Cp - AoA = 10 - wake roll up - SS](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/123d7c9f-c768-4d44-847b-672f0c6e7cee)
+![wing - Cp - AoA = 10 - wake roll up - PS](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/6da4db60-8bf7-49a6-9128-67d2a6eef84e)
+
+## Unsteady Simulation with wake roll up
+
+![wing - AoA = 10 - unsteady wake - body-fixed frame](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/beef9012-4272-4a26-b98c-7228a646d5ea)
+
+![wing - AoA = 10 - unsteady wake - side view - inertial frame](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/66cb3bea-8554-4dfd-bc96-f098c226059b)
+
+
+## Potential Flow around a BWB-UAV
+![bwb - mesh](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/87d79ea9-77d1-4ab4-aca3-8dbd6d253a86)
+
+![bwb - mesh - top view](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/cc2bcea6-c231-4190-a2de-8e3301d62d60)
+
+![bwb - mesh - side view](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/92a9efba-4f23-47c2-8ad9-e772238e3754)
+
+![bwb - mesh - front view](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/8d6c4e3c-fca5-4d9f-a173-6d366006a93c)
+
+![bwb - AoA = 4, wake roll up](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/3b48ba93-7bcd-4adf-b562-cf364dd9f89e)
+
+![bwb - AoA = 4, wake roll up - side view](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/a02348c3-4c1e-4ba2-a40f-0423a5715133)
+
+![bwb - Cp - AoA = 4 - wake roll up - SS](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/bec3b10f-83c4-452e-93bf-01234ebdf13f)
+
+![bwb - Cp - AoA = 4 - wake roll up - PS](https://github.com/ichamail/Panel-Methods-3D/assets/107580530/b17caf9b-d4f2-4899-9835-ffa1c909fdbe)
+
+
+
